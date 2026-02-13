@@ -3,6 +3,17 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { scanProjects, categorizeByLanguage, categorizeByType } from './scanner'
+import { scanDevelopmentTools, categorizeTools, getToolsStats } from './tools-scanner'
+import {
+  createTray,
+  updateTrayMenu,
+  destroyTray,
+  getRecentProjects,
+  addRecentProject,
+  clearRecentProjects,
+  openProject,
+  openWithVSCode
+} from './tray'
 
 function createWindow(): void {
   // Create the browser window.
@@ -27,6 +38,14 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // Don't quit when window is closed, hide to tray instead
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault()
+      mainWindow.hide()
+    }
+  })
+
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -34,6 +53,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 // This method will be called when Electron has finished
@@ -76,22 +97,61 @@ app.whenReady().then(() => {
     }
   })
 
-  createWindow()
+  // 扫描开发工具
+  ipcMain.handle('scan-tools', async () => {
+    const tools = await scanDevelopmentTools()
+    return {
+      tools,
+      byCategory: categorizeTools(tools),
+      stats: getToolsStats(tools)
+    }
+  })
+
+  // 打开项目
+  ipcMain.handle('open-project', async (_, projectPath: string) => {
+    await openProject(projectPath)
+  })
+
+  // 用 VS Code 打开项目
+  ipcMain.handle('open-with-vscode', async (_, projectPath: string) => {
+    await openWithVSCode(projectPath)
+  })
+
+  // 添加到最近项目
+  ipcMain.handle('add-recent-project', async (_, { name, path }) => {
+    addRecentProject(name, path)
+  })
+
+  // 获取最近项目
+  ipcMain.handle('get-recent-projects', async () => {
+    return getRecentProjects()
+  })
+
+  // 清空最近项目
+  ipcMain.handle('clear-recent-projects', async () => {
+    clearRecentProjects()
+  })
+
+  const mainWindow = createWindow()
+
+  // 创建系统托盘
+  createTray(mainWindow, async (projectPath: string) => {
+    await openProject(projectPath)
+    // 添加到最近项目
+    addRecentProject(projectPath.split('/').pop() || projectPath.split('\\').pop() || 'Unknown', projectPath)
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
-})
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
+  // 处理应用退出
+  app.on('before-quit', () => {
+    app.isQuitting = true
+    destroyTray()
+  })
 })
 
 // In this file you can include the rest of your app's specific main process

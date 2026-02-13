@@ -16,10 +16,42 @@ export interface ScanResult {
   byType: Record<string, ProjectInfo[]>
 }
 
+export interface ToolInfo {
+  name: string
+  displayName: string
+  version?: string
+  installed: boolean
+  icon?: string
+  category: 'Runtime' | 'Package Manager' | 'Version Control' | 'Build Tool' | 'Container' | 'IDE' | 'Other'
+}
+
+export interface ToolsScanResult {
+  tools: ToolInfo[]
+  byCategory: Record<string, ToolInfo[]>
+  stats: {
+    installed: number
+    total: number
+    categories: number
+    percentage: number
+  }
+}
+
+export interface RecentProject {
+  name: string
+  path: string
+  lastOpened: number
+}
+
 // Custom APIs for renderer
 const api = {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
-  scanProjects: (folderPath: string) => ipcRenderer.invoke('scan-projects', folderPath)
+  scanProjects: (folderPath: string) => ipcRenderer.invoke('scan-projects', folderPath),
+  scanTools: () => ipcRenderer.invoke('scan-tools'),
+  openProject: (projectPath: string) => ipcRenderer.invoke('open-project', projectPath),
+  openWithVSCode: (projectPath: string) => ipcRenderer.invoke('open-with-vscode', projectPath),
+  addRecentProject: (name: string, path: string) => ipcRenderer.invoke('add-recent-project', { name, path }),
+  getRecentProjects: () => ipcRenderer.invoke('get-recent-projects'),
+  clearRecentProjects: () => ipcRenderer.invoke('clear-recent-projects')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

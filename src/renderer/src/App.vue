@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { ProjectInfo, ScanResult } from '../../../preload'
+import { ref, computed, onMounted } from 'vue'
+import type { ProjectInfo, ScanResult, ToolInfo, ToolsScanResult } from '../../../preload'
 
 const scanResult = ref<ScanResult | null>(null)
+const toolsResult = ref<ToolsScanResult | null>(null)
 const loading = ref(false)
 const currentView = ref('language')
+const currentTab = ref('projects') // 'projects' | 'tools'
 const selectedFolder = ref<string | null>(null)
 
 const groupedProjects = computed(() => {
@@ -14,12 +16,32 @@ const groupedProjects = computed(() => {
     : scanResult.value.byType
 })
 
+const groupedTools = computed(() => {
+  if (!toolsResult.value) return {}
+  return toolsResult.value.byCategory
+})
+
 const categories = computed(() => {
-  return Object.keys(groupedProjects.value).sort()
+  return currentTab.value === 'tools'
+    ? Object.keys(groupedTools.value).sort()
+    : Object.keys(groupedProjects.value).sort()
 })
 
 const totalProjects = computed(() => {
   return scanResult.value?.projects.length || 0
+})
+
+const totalTools = computed(() => {
+  return toolsResult.value?.stats.installed || 0
+})
+
+const toolsStats = computed(() => {
+  return toolsResult.value?.stats || { installed: 0, total: 0, categories: 0, percentage: 0 }
+})
+
+onMounted(async () => {
+  // 自动扫描工具
+  await scanTools()
 })
 
 async function selectFolder() {
@@ -41,6 +63,29 @@ async function scanProjects(folderPath: string) {
   }
 }
 
+async function scanTools() {
+  loading.value = true
+  try {
+    toolsResult.value = await window.api.scanTools()
+  } catch (error) {
+    console.error('Tools scan failed:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function openProject(project: ProjectInfo) {
+  await window.api.openProject(project.path)
+  // 添加到最近项目
+  await window.api.addRecentProject(project.name, project.path)
+}
+
+async function openWithVSCode(project: ProjectInfo) {
+  await window.api.openWithVSCode(project.path)
+  // 添加到最近项目
+  await window.api.addRecentProject(project.name, project.path)
+}
+
 function getLanguageAccent(language: string): string {
   const accents: Record<string, string> = {
     'JavaScript/TypeScript': '#f7df1e',
@@ -58,6 +103,19 @@ function getLanguageAccent(language: string): string {
   }
   return accents[language] || '#6b7280'
 }
+
+function getCategoryAccent(category: string): string {
+  const accents: Record<string, string> = {
+    Runtime: '#3b82f6',
+    'Package Manager': '#8b5cf6',
+    'Version Control': '#f59e0b',
+    'Build Tool': '#10b981',
+    Container: '#06b6d4',
+    IDE: '#ef4444',
+    Other: '#6b7280'
+  }
+  return accents[category] || '#6b7280'
+}
 </script>
 
 <template>
@@ -73,114 +131,216 @@ function getLanguageAccent(language: string): string {
           </div>
           <div class="brand-text">
             <h1>Dev Manager</h1>
-            <span>Project Overview</span>
+            <span>Projects & Tools</span>
           </div>
         </div>
-        <button class="btn-primary" @click="selectFolder" :disabled="loading">
-          <span v-if="!loading" class="btn-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-            </svg>
-          </span>
-          <span v-else class="btn-spinner"></span>
-          <span>{{ loading ? 'Scanning...' : 'Select Folder' }}</span>
-        </button>
+        <div class="header-actions">
+          <button v-if="currentTab === 'projects'" class="btn-primary" @click="selectFolder" :disabled="loading">
+            <span v-if="!loading" class="btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+              </svg>
+            </span>
+            <span v-else class="btn-spinner"></span>
+            <span>{{ loading ? 'Scanning...' : 'Select Folder' }}</span>
+          </button>
+          <button v-if="currentTab === 'tools'" class="btn-primary" @click="scanTools" :disabled="loading">
+            <span v-if="!loading" class="btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </span>
+            <span v-else class="btn-spinner"></span>
+            <span>{{ loading ? 'Scanning...' : 'Rescan Tools' }}</span>
+          </button>
+        </div>
       </div>
     </header>
 
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button
+        @click="currentTab = 'projects'"
+        :class="['tab-btn', { active: currentTab === 'projects' }]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        </svg>
+        <span>Projects</span>
+      </button>
+      <button
+        @click="currentTab = 'tools'"
+        :class="['tab-btn', { active: currentTab === 'tools' }]"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+        </svg>
+        <span>Tools</span>
+      </button>
+    </nav>
+
     <!-- Main -->
     <main class="app-main">
-      <!-- Empty State -->
-      <div v-if="!scanResult && !loading" class="empty-state">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-          </svg>
+      <!-- Projects Tab -->
+      <div v-if="currentTab === 'projects'">
+        <!-- Empty State -->
+        <div v-if="!scanResult && !loading" class="empty-state">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+            </svg>
+          </div>
+          <h2>Select Project Directory</h2>
+          <p>Choose a folder containing your development projects to automatically identify and categorize them.</p>
+          <button class="btn-outline" @click="selectFolder">Browse Folders</button>
         </div>
-        <h2>Select Project Directory</h2>
-        <p>Choose a folder containing your development projects to automatically identify and categorize them.</p>
-        <button class="btn-outline" @click="selectFolder">Browse Folders</button>
+
+        <!-- Results -->
+        <div v-if="scanResult" class="results">
+          <!-- Stats Bar -->
+          <div class="stats-bar">
+            <div class="stat-item">
+              <span class="stat-label">Total Projects</span>
+              <span class="stat-value">{{ totalProjects }}</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-label">Languages</span>
+              <span class="stat-value">{{ Object.keys(scanResult.byLanguage).length }}</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-label">Types</span>
+              <span class="stat-value">{{ Object.keys(scanResult.byType).length }}</span>
+            </div>
+          </div>
+
+          <!-- View Toggle -->
+          <div class="view-toggle">
+            <button
+              @click="currentView = 'language'"
+              :class="['toggle-btn', { active: currentView === 'language' }]"
+            >
+              <span>By Language</span>
+            </button>
+            <button
+              @click="currentView = 'type'"
+              :class="['toggle-btn', { active: currentView === 'type' }]"
+            >
+              <span>By Type</span>
+            </button>
+          </div>
+
+          <!-- Categories -->
+          <div class="categories">
+            <div v-for="category in categories" :key="category" class="category-section">
+              <div class="category-header">
+                <div class="category-info">
+                  <span
+                    class="category-dot"
+                    :style="{ backgroundColor: getLanguageAccent(category) }"
+                  ></span>
+                  <h3>{{ category }}</h3>
+                </div>
+                <span class="category-count">{{ groupedProjects[category].length }} projects</span>
+              </div>
+
+              <div class="projects-grid">
+                <div
+                  v-for="project in groupedProjects[category]"
+                  :key="project.path"
+                  class="project-card"
+                >
+                  <div class="card-header">
+                    <h4 class="project-name">{{ project.name }}</h4>
+                    <svg v-if="project.hasGit" class="git-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                  </div>
+                  <p class="project-path">{{ project.path }}</p>
+                  <div class="card-footer">
+                    <span class="badge">{{ project.type }}</span>
+                    <span v-if="project.description" class="description">{{ project.description }}</span>
+                  </div>
+                  <div class="card-actions">
+                    <button class="action-btn" @click="openProject(project)" title="Open">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+                      </svg>
+                    </button>
+                    <button class="action-btn vscode" @click="openWithVSCode(project)" title="Open with VS Code">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-.39.015l-2.4 2.4a1.06 1.06 0 0 0 .293 1.414l1.35 2.22-2.3 2.3a1.06 1.06 0 0 0-.293-1.414l-1.35-2.22a.999.999 0 0 0 .39-.015l2.4-2.4a1.06 1.06 0 0 0-.293-1.414l-1.349-2.22 2.3-2.3a1.06 1.06 0 0 0 .293 1.414l1.35 2.22a.999.999 0 0 0-.39.015l-2.4 2.4a1.06 1.06 0 0 0 .293 1.414l1.349 2.22 9.46-8.63a1.492 1.492 0 0 0 1.704-.29l4.94-2.58 9.46 8.63a1.492 1.492 0 0 0 1.704-.29l4.94-2.58z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Projects -->
+          <div v-if="totalProjects === 0" class="no-projects">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
+            </svg>
+            <p>No development projects found</p>
+            <span>Try selecting a different folder</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Results -->
-      <div v-if="scanResult" class="results">
-        <!-- Stats Bar -->
-        <div class="stats-bar">
-          <div class="stat-item">
-            <span class="stat-label">Total Projects</span>
-            <span class="stat-value">{{ totalProjects }}</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-label">Languages</span>
-            <span class="stat-value">{{ Object.keys(scanResult.byLanguage).length }}</span>
-          </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-label">Types</span>
-            <span class="stat-value">{{ Object.keys(scanResult.byType).length }}</span>
-          </div>
-        </div>
-
-        <!-- View Toggle -->
-        <div class="view-toggle">
-          <button
-            @click="currentView = 'language'"
-            :class="['toggle-btn', { active: currentView === 'language' }]"
-          >
-            <span>By Language</span>
-          </button>
-          <button
-            @click="currentView = 'type'"
-            :class="['toggle-btn', { active: currentView === 'type' }]"
-          >
-            <span>By Type</span>
-          </button>
-        </div>
-
-        <!-- Categories -->
-        <div class="categories">
-          <div v-for="category in categories" :key="category" class="category-section">
-            <div class="category-header">
-              <div class="category-info">
-                <span
-                  class="category-dot"
-                  :style="{ backgroundColor: getLanguageAccent(category) }"
-                ></span>
-                <h3>{{ category }}</h3>
-              </div>
-              <span class="category-count">{{ groupedProjects[category].length }} projects</span>
+      <!-- Tools Tab -->
+      <div v-if="currentTab === 'tools'">
+        <div v-if="toolsResult" class="results">
+          <!-- Stats Bar -->
+          <div class="stats-bar">
+            <div class="stat-item">
+              <span class="stat-label">Installed</span>
+              <span class="stat-value">{{ toolsStats.installed }}/{{ toolsStats.total }}</span>
             </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-label">Coverage</span>
+              <span class="stat-value">{{ toolsStats.percentage }}%</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-label">Categories</span>
+              <span class="stat-value">{{ toolsStats.categories }}</span>
+            </div>
+          </div>
 
-            <div class="projects-grid">
-              <div
-                v-for="project in groupedProjects[category]"
-                :key="project.path"
-                class="project-card"
-              >
-                <div class="card-header">
-                  <h4 class="project-name">{{ project.name }}</h4>
-                  <svg v-if="project.hasGit" class="git-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-                  </svg>
+          <!-- Categories -->
+          <div class="categories">
+            <div v-for="category in categories" :key="category" class="category-section">
+              <div class="category-header">
+                <div class="category-info">
+                  <span
+                    class="category-dot"
+                    :style="{ backgroundColor: getCategoryAccent(category) }"
+                  ></span>
+                  <h3>{{ category }}</h3>
                 </div>
-                <p class="project-path">{{ project.path }}</p>
-                <div class="card-footer">
-                  <span class="badge">{{ project.type }}</span>
-                  <span v-if="project.description" class="description">{{ project.description }}</span>
+                <span class="category-count">{{ groupedTools[category].filter(t => t.installed).length }}/{{ groupedTools[category].length }}</span>
+              </div>
+
+              <div class="tools-grid">
+                <div
+                  v-for="tool in groupedTools[category]"
+                  :key="tool.name"
+                  :class="['tool-card', { installed: tool.installed }]"
+                >
+                  <div class="tool-icon">{{ tool.icon }}</div>
+                  <div class="tool-info">
+                    <h4 class="tool-name">{{ tool.displayName }}</h4>
+                    <p v-if="tool.version" class="tool-version">{{ tool.version }}</p>
+                    <p v-else class="tool-status">Not installed</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- No Projects -->
-        <div v-if="totalProjects === 0" class="no-projects">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
-          </svg>
-          <p>No development projects found</p>
-          <span>Try selecting a different folder</span>
         </div>
       </div>
     </main>
@@ -256,6 +416,50 @@ function getLanguageAccent(language: string): string {
   font-weight: 500;
 }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Tab Navigation */
+.tab-nav {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 24px 0;
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #71717a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tab-btn.active {
+  color: #fafafa;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tab-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* Buttons */
 .btn-primary {
   display: inline-flex;
@@ -306,7 +510,7 @@ function getLanguageAccent(language: string): string {
   padding: 12px 24px;
   background: transparent;
   color: #fafafa;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255,255,255,0.1);
   border-radius: 9px;
   font-size: 14px;
   font-weight: 600;
@@ -316,14 +520,14 @@ function getLanguageAccent(language: string): string {
 
 .btn-outline:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255,255,255,0.15);
 }
 
 /* Main */
 .app-main {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 24px;
+  padding: 24px 24px 60px;
 }
 
 /* Empty State */
@@ -339,8 +543,8 @@ function getLanguageAccent(language: string): string {
 .empty-icon {
   width: 72px;
   height: 72px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 20px;
   display: flex;
   align-items: center;
@@ -559,6 +763,70 @@ function getLanguageAccent(language: string): string {
 .description {
   font-size: 12px;
   color: #71717a;
+}
+
+/* Tools Grid */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.tool-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  transition: all 0.15s ease;
+  opacity: 0.5;
+}
+
+.tool-card.installed {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.tool-card.installed:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.tool-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.tool-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fafafa;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+
+.tool-version {
+  font-size: 12px;
+  color: #71717a;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-status {
+  font-size: 12px;
+  color: #52525b;
+  font-style: italic;
 }
 
 /* No Projects */

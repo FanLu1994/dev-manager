@@ -140,7 +140,7 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
   }
 
   // 先用命令检查
-  const commandCheck = await isToolInstalled(tool.name)
+  const commandCheck = await isToolInstalled(toolName)
   if (commandCheck) return true
 
   // 检查特定路径

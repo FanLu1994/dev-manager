@@ -6,7 +6,6 @@ import { scanProjects, categorizeByLanguage, categorizeByType } from './scanner'
 import { scanDevelopmentTools, categorizeTools, getToolsStats } from './tools-scanner'
 import {
   createTray,
-  updateTrayMenu,
   destroyTray,
   getRecentProjects,
   addRecentProject,
@@ -15,12 +14,16 @@ import {
   openWithVSCode
 } from './tray'
 
-function createWindow(): void {
+let isAppQuitting = false
+
+function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
+    frame: false,
+    titleBarStyle: 'hidden',
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -40,7 +43,7 @@ function createWindow(): void {
 
   // Don't quit when window is closed, hide to tray instead
   mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
+    if (!isAppQuitting) {
       event.preventDefault()
       mainWindow.hide()
     }
@@ -73,6 +76,28 @@ app.whenReady().then(() => {
 
   // IPC handlers
   ipcMain.on('ping', () => console.log('pong'))
+
+  // Window controls
+  ipcMain.on('window-minimize', () => {
+    const win = BrowserWindow.getFocusedWindow()
+    if (win) win.minimize()
+  })
+
+  ipcMain.on('window-maximize', () => {
+    const win = BrowserWindow.getFocusedWindow()
+    if (win) {
+      if (win.isMaximized()) {
+        win.unmaximize()
+      } else {
+        win.maximize()
+      }
+    }
+  })
+
+  ipcMain.on('window-close', () => {
+    const win = BrowserWindow.getFocusedWindow()
+    if (win) win.close()
+  })
 
   // 选择文件夹
   ipcMain.handle('select-folder', async () => {
@@ -138,7 +163,10 @@ app.whenReady().then(() => {
   createTray(mainWindow, async (projectPath: string) => {
     await openProject(projectPath)
     // 添加到最近项目
-    addRecentProject(projectPath.split('/').pop() || projectPath.split('\\').pop() || 'Unknown', projectPath)
+    addRecentProject(
+      projectPath.split('/').pop() || projectPath.split('\\').pop() || 'Unknown',
+      projectPath
+    )
   })
 
   app.on('activate', function () {
@@ -149,7 +177,7 @@ app.whenReady().then(() => {
 
   // 处理应用退出
   app.on('before-quit', () => {
-    app.isQuitting = true
+    isAppQuitting = true
     destroyTray()
   })
 })

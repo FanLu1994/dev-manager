@@ -111,9 +111,9 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
   const idePaths: Record<string, string[]> = {
     code: [
       // Windows
+      join(process.env.LOCALAPPDATA || '', 'Programs', 'Microsoft VS Code', 'Code.exe'),
       join('C:\\', 'Program Files', 'Microsoft VS Code', 'Code.exe'),
       join('C:\\', 'Program Files (x86)', 'Microsoft VS Code', 'Code.exe'),
-      join(process.env.LOCALAPPDATA || '', 'Programs', 'Microsoft VS Code', 'Code.exe'),
       // macOS
       '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
       '/usr/local/bin/code',
@@ -123,7 +123,6 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
     ],
     idea: [
       // Windows
-      join('C:\\', 'Program Files', 'JetBrains', 'IntelliJ IDEA 2024.2', 'bin', 'idea64.exe'),
       join('C:\\', 'Program Files', 'JetBrains', 'IntelliJ IDEA', 'bin', 'idea64.exe'),
       // macOS
       '/Applications/IntelliJ IDEA.app/Contents/MacOS/idea',
@@ -131,11 +130,15 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
       '/usr/bin/idea',
       '/usr/local/bin/idea'
     ],
-    vim: ['/usr/bin/vim', '/usr/local/bin/vim', 'C:\\Program Files\\Vim\\vim90\\vim.exe'],
+    vim: [
+      '/usr/bin/vim',
+      '/usr/local/bin/vim',
+      'C:\\Program Files\\Vim\\vim90\\vim.exe'
+    ],
     nvim: [
       '/usr/local/bin/nvim',
       '/usr/bin/nvim',
-      join(process.env.LOCALAPPDATA || '', 'nvim-bin', 'nvim.exe')
+      join(process.env.LOCALAPPDATA || '', 'nvim', 'nvim.exe')
     ]
   }
 

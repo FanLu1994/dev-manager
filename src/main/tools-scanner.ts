@@ -157,22 +157,20 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
 }
 
 export async function scanDevelopmentTools(): Promise<ToolInfo[]> {
-  // 并发检查所有工具
-  const checks = TOOLS.map(async (tool) => {
+  const installedTools: ToolInfo[] = []
+
+  for (const tool of TOOLS) {
     // IDE 使用专门的检查方法
     const installed =
       tool.category === 'IDE' ? await isIDEInstalled(tool.name) : await isToolInstalled(tool.name)
 
-    if (!installed) {
-      return { ...tool, installed: false, version: undefined }
+    if (installed) {
+      const version = await getToolVersion(tool.name)
+      installedTools.push({ ...tool, installed: true, version })
     }
+  }
 
-    const version = await getToolVersion(tool.name)
-    return { ...tool, installed: true, version }
-  })
-
-  const scannedTools = await Promise.all(checks)
-  return scannedTools
+  return installedTools
 }
 
 export function categorizeTools(tools: ToolInfo[]): Record<string, ToolInfo[]> {
@@ -189,14 +187,13 @@ export function categorizeTools(tools: ToolInfo[]): Record<string, ToolInfo[]> {
 }
 
 export function getToolsStats(tools: ToolInfo[]) {
-  const installed = tools.filter((t) => t.installed).length
-  const total = tools.length
+  const count = tools.length
   const categories = new Set(tools.map((t) => t.category)).size
 
   return {
-    installed,
-    total,
+    installed: count,
+    total: count,
     categories,
-    percentage: Math.round((installed / total) * 100)
+    percentage: 100
   }
 }

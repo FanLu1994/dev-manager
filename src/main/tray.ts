@@ -1,5 +1,14 @@
-import { Tray, Menu, app, nativeImage, BrowserWindow } from 'electron'
+import {
+  Tray,
+  Menu,
+  app,
+  nativeImage,
+  BrowserWindow,
+  type MenuItemConstructorOptions
+} from 'electron'
 import path from 'path'
+import { join } from 'path'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 
 let tray: Tray | null = null
 
@@ -12,10 +21,19 @@ export interface RecentProject {
 const MAX_RECENT_PROJECTS = 10
 const RECENT_STORAGE_KEY = 'recent-projects'
 
-export function createTray(
-  mainWindow: BrowserWindow,
-  onOpenProject: (path: string) => void
-): void {
+function getStorageFilePath(): string {
+  const userDataPath = app.getPath('userData')
+  const storageDir = join(userDataPath, 'storage')
+
+  // Ensure storage directory exists
+  if (!existsSync(storageDir)) {
+    mkdirSync(storageDir, { recursive: true })
+  }
+
+  return join(storageDir, `${RECENT_STORAGE_KEY}.json`)
+}
+
+export function createTray(mainWindow: BrowserWindow, onOpenProject: (path: string) => void): void {
   // 销毁现有托盘
   destroyTray()
 
@@ -38,7 +56,7 @@ export function updateTrayMenu(
 
   const recentProjects = getRecentProjects()
 
-  const template = [
+  const template: MenuItemConstructorOptions[] = [
     {
       label: 'Dev Manager',
       click: () => {
@@ -52,15 +70,16 @@ export function updateTrayMenu(
     { type: 'separator' },
     {
       label: 'Recent Projects',
-      submenu: recentProjects.length > 0
-        ? recentProjects.map((project, index) => ({
-            label: `${index + 1}. ${project.name}`,
-            click: () => {
-              onOpenProject(project.path)
-              updateRecentProject(project)
-            }
-          }))
-        : [{ label: 'No recent projects', enabled: false }]
+      submenu:
+        recentProjects.length > 0
+          ? recentProjects.map((project, index) => ({
+              label: `${index + 1}. ${project.name}`,
+              click: () => {
+                onOpenProject(project.path)
+                updateRecentProject(project)
+              }
+            }))
+          : [{ label: 'No recent projects', enabled: false }]
     },
     { type: 'separator' },
     {
@@ -94,12 +113,11 @@ export function destroyTray(): void {
 
 export function getRecentProjects(): RecentProject[] {
   try {
-    const stored = localStorage.getItem(RECENT_STORAGE_KEY)
-    if (stored) {
-      const projects: RecentProject[] = JSON.parse(stored)
-      return projects
-        .sort((a, b) => b.lastOpened - a.lastOpened)
-        .slice(0, MAX_RECENT_PROJECTS)
+    const storagePath = getStorageFilePath()
+    if (existsSync(storagePath)) {
+      const data = readFileSync(storagePath, 'utf-8')
+      const projects: RecentProject[] = JSON.parse(data)
+      return projects.sort((a, b) => b.lastOpened - a.lastOpened).slice(0, MAX_RECENT_PROJECTS)
     }
   } catch (error) {
     console.error('Failed to load recent projects:', error)
@@ -123,7 +141,8 @@ export function updateRecentProject(project: RecentProject): void {
   const updated = filtered.slice(0, MAX_RECENT_PROJECTS)
 
   try {
-    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(updated))
+    const storagePath = getStorageFilePath()
+    writeFileSync(storagePath, JSON.stringify(updated, null, 2), 'utf-8')
   } catch (error) {
     console.error('Failed to save recent projects:', error)
   }
@@ -139,7 +158,10 @@ export function addRecentProject(name: string, path: string): void {
 
 export function clearRecentProjects(): void {
   try {
-    localStorage.removeItem(RECENT_STORAGE_KEY)
+    const storagePath = getStorageFilePath()
+    if (existsSync(storagePath)) {
+      writeFileSync(storagePath, '[]', 'utf-8')
+    }
   } catch (error) {
     console.error('Failed to clear recent projects:', error)
   }
@@ -148,17 +170,23 @@ export function clearRecentProjects(): void {
 // 打开项目的默认方式
 export async function openProject(path: string): Promise<void> {
   const { shell } = require('electron')
-  await shell.openPath(path)
+  try {
+    await shell.openPath(path)
+  } catch (error) {
+    console.error('Failed to open project:', error)
+    throw error
+  }
 }
 
 // 使用 VS Code 打开项目
 export async function openWithVSCode(path: string): Promise<void> {
   const { exec } = require('child_process')
-  const command = process.platform === 'win32'
-    ? `code "${path}"`
-    : process.platform === 'darwin'
-    ? `open -a "Visual Studio Code" "${path}"`
-    : `code "${path}"`
+  const command =
+    process.platform === 'win32'
+      ? `code "${path}"`
+      : process.platform === 'darwin'
+        ? `open -a "Visual Studio Code" "${path}"`
+        : `code "${path}"`
 
   return new Promise((resolve, reject) => {
     exec(command, (error) => {

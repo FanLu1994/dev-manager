@@ -320,13 +320,8 @@ function windowClose() {
           <!-- Stats Bar -->
           <div class="stats-bar">
             <div class="stat-item">
-              <span class="stat-label">Installed</span>
-              <span class="stat-value">{{ toolsStats.installed }}/{{ toolsStats.total }}</span>
-            </div>
-            <div class="stat-divider"></div>
-            <div class="stat-item">
-              <span class="stat-label">Coverage</span>
-              <span class="stat-value">{{ toolsStats.percentage }}%</span>
+              <span class="stat-label">Total Tools</span>
+              <span class="stat-value">{{ toolsStats.total }}</span>
             </div>
             <div class="stat-divider"></div>
             <div class="stat-item">
@@ -346,20 +341,19 @@ function windowClose() {
                   ></span>
                   <h3>{{ category }}</h3>
                 </div>
-                <span class="category-count">{{ groupedTools[category].filter(t => t.installed).length }}/{{ groupedTools[category].length }}</span>
+                <span class="category-count">{{ groupedTools[category].length }} tools</span>
               </div>
 
               <div class="tools-grid">
                 <div
                   v-for="tool in groupedTools[category]"
                   :key="tool.name"
-                  :class="['tool-card', { installed: tool.installed }]"
+                  class="tool-card"
                 >
                   <div class="tool-icon">{{ tool.icon }}</div>
                   <div class="tool-info">
                     <h4 class="tool-name">{{ tool.displayName }}</h4>
                     <p v-if="tool.version" class="tool-version">{{ tool.version }}</p>
-                    <p v-else class="tool-status">Not installed</p>
                   </div>
                 </div>
               </div>
@@ -869,20 +863,13 @@ function windowClose() {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   transition: all 0.12s ease;
-  opacity: 0.45;
 }
 
-.tool-card.installed {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.tool-card.installed:hover {
+.tool-card:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
@@ -914,12 +901,6 @@ function windowClose() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.tool-status {
-  font-size: 11px;
-  color: #6d6d70;
-  font-style: italic;
 }
 
 /* No Projects */

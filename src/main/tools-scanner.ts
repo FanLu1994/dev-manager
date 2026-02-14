@@ -104,16 +104,24 @@ async function isToolInstalled(toolName: string): Promise<boolean> {
 
 // 专门检查 IDE 是否安装（通过常见路径和可执行文件）
 async function isIDEInstalled(toolName: string): Promise<boolean> {
-  const { existsSync } = await import('fs')
+  const { existsSync, promises: fs } = await import('fs')
   const { join } = await import('path')
+  const isWindows = process.platform === 'win32'
+  const programFiles = process.env.ProgramFiles || 'C:\\Program Files'
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'
+  const localAppData = process.env.LOCALAPPDATA || ''
+  const userProfile = process.env.USERPROFILE || ''
 
   // 定义常见 IDE 路径
   const idePaths: Record<string, string[]> = {
     code: [
       // Windows
-      join(process.env.LOCALAPPDATA || '', 'Programs', 'Microsoft VS Code', 'Code.exe'),
-      join('C:\\', 'Program Files', 'Microsoft VS Code', 'Code.exe'),
-      join('C:\\', 'Program Files (x86)', 'Microsoft VS Code', 'Code.exe'),
+      join(localAppData, 'Programs', 'Microsoft VS Code', 'Code.exe'),
+      join(programFiles, 'Microsoft VS Code', 'Code.exe'),
+      join(programFilesX86, 'Microsoft VS Code', 'Code.exe'),
+      join(localAppData, 'Programs', 'Microsoft VS Code Insiders', 'Code - Insiders.exe'),
+      join(programFiles, 'Microsoft VS Code Insiders', 'Code - Insiders.exe'),
+      join(programFilesX86, 'Microsoft VS Code Insiders', 'Code - Insiders.exe'),
       // macOS
       '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
       '/usr/local/bin/code',
@@ -123,7 +131,8 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
     ],
     idea: [
       // Windows
-      join('C:\\', 'Program Files', 'JetBrains', 'IntelliJ IDEA', 'bin', 'idea64.exe'),
+      join(programFiles, 'JetBrains', 'IntelliJ IDEA', 'bin', 'idea64.exe'),
+      join(programFilesX86, 'JetBrains', 'IntelliJ IDEA', 'bin', 'idea64.exe'),
       // macOS
       '/Applications/IntelliJ IDEA.app/Contents/MacOS/idea',
       // Linux
@@ -133,13 +142,43 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
     vim: [
       '/usr/bin/vim',
       '/usr/local/bin/vim',
-      'C:\\Program Files\\Vim\\vim90\\vim.exe'
+      join(programFiles, 'Vim', 'vim90', 'vim.exe'),
+      join(programFilesX86, 'Vim', 'vim90', 'vim.exe')
     ],
     nvim: [
       '/usr/local/bin/nvim',
       '/usr/bin/nvim',
-      join(process.env.LOCALAPPDATA || '', 'nvim', 'nvim.exe')
+      join(localAppData, 'nvim', 'nvim.exe'),
+      join(programFiles, 'Neovim', 'bin', 'nvim.exe'),
+      join(programFilesX86, 'Neovim', 'bin', 'nvim.exe'),
+      join(userProfile, 'scoop', 'apps', 'neovim', 'current', 'bin', 'nvim.exe')
     ]
+  }
+
+  async function findExecutableInDir(
+    dirPath: string,
+    exeNames: string[],
+    maxDepth: number
+  ): Promise<boolean> {
+    if (!dirPath || maxDepth < 0) return false
+    let entries: Array<{ name: string; isDirectory(): boolean }> = []
+    try {
+      entries = await fs.readdir(dirPath, { withFileTypes: true })
+    } catch {
+      return false
+    }
+
+    for (const entry of entries) {
+      const fullPath = join(dirPath, entry.name)
+      if (!entry.isDirectory()) {
+        if (exeNames.includes(entry.name.toLowerCase())) return true
+        continue
+      }
+
+      if (await findExecutableInDir(fullPath, exeNames, maxDepth - 1)) return true
+    }
+
+    return false
   }
 
   // 先用命令检查
@@ -153,6 +192,53 @@ async function isIDEInstalled(toolName: string): Promise<boolean> {
       try {
         if (existsSync(path)) return true
       } catch {}
+    }
+  }
+
+  if (isWindows) {
+    if (toolName === 'idea') {
+      const exeNames = ['idea64.exe', 'idea.exe']
+      const roots = [
+        join(programFiles, 'JetBrains'),
+        join(programFilesX86, 'JetBrains'),
+        join(localAppData, 'JetBrains', 'Toolbox', 'apps')
+      ]
+      for (const root of roots) {
+        if (await findExecutableInDir(root, exeNames, 4)) return true
+      }
+    }
+
+    if (toolName === 'vim') {
+      const exeNames = ['vim.exe']
+      const roots = [join(programFiles, 'Vim'), join(programFilesX86, 'Vim')]
+      for (const root of roots) {
+        if (await findExecutableInDir(root, exeNames, 3)) return true
+      }
+    }
+
+    if (toolName === 'nvim') {
+      const exeNames = ['nvim.exe']
+      const roots = [
+        join(programFiles, 'Neovim'),
+        join(programFilesX86, 'Neovim'),
+        join(userProfile, 'scoop', 'apps', 'neovim'),
+        join(localAppData, 'nvim')
+      ]
+      for (const root of roots) {
+        if (await findExecutableInDir(root, exeNames, 3)) return true
+      }
+    }
+
+    if (toolName === 'code') {
+      const exeNames = ['code.exe', 'code - insiders.exe']
+      const roots = [
+        join(localAppData, 'Programs'),
+        join(programFiles),
+        join(programFilesX86)
+      ]
+      for (const root of roots) {
+        if (await findExecutableInDir(root, exeNames, 3)) return true
+      }
     }
   }
 

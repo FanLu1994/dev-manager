@@ -13,7 +13,9 @@
       "Bash(node node_modules/.pnpm/electron@34.5.8/node_modules/electron/install.js:*)",
       "Bash(pnpm remove:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(powershell -Command \"Get-Command code -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(git push:*)"
     ]
   }
 }

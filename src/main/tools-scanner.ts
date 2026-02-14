@@ -9,208 +9,12 @@ export interface ToolInfo {
   version?: string
   installed: boolean
   icon?: string
-  category: 'Runtime' | 'Package Manager' | 'Version Control' | 'Build Tool' | 'Container' | 'IDE' | 'Other'
+  category: 'IDE' | 'CLI'
 }
 
-// 开发工具定义
+// 开发工具定义 - 仅 IDE 和 CLI 工具
 const TOOLS: Omit<ToolInfo, 'installed' | 'version'>[] = [
-  // Runtime
-  {
-    name: 'node',
-    displayName: 'Node.js',
-    category: 'Runtime',
-    icon: '⬢'
-  },
-  {
-    name: 'python',
-    displayName: 'Python',
-    category: 'Runtime',
-    icon: '🐍'
-  },
-  {
-    name: 'python3',
-    displayName: 'Python 3',
-    category: 'Runtime',
-    icon: '🐍'
-  },
-  {
-    name: 'java',
-    displayName: 'Java',
-    category: 'Runtime',
-    icon: '☕'
-  },
-  {
-    name: 'go',
-    displayName: 'Go',
-    category: 'Runtime',
-    icon: '🔵'
-  },
-  {
-    name: 'ruby',
-    displayName: 'Ruby',
-    category: 'Runtime',
-    icon: '💎'
-  },
-  {
-    name: 'rustc',
-    displayName: 'Rust',
-    category: 'Runtime',
-    icon: '🦀'
-  },
-  {
-    name: 'dart',
-    displayName: 'Dart',
-    category: 'Runtime',
-    icon: '🎯'
-  },
-  {
-    name: 'swift',
-    displayName: 'Swift',
-    category: 'Runtime',
-    icon: '🍎'
-  },
-  {
-    name: 'php',
-    displayName: 'PHP',
-    category: 'Runtime',
-    icon: '🐘'
-  },
-
-  // Package Manager
-  {
-    name: 'npm',
-    displayName: 'npm',
-    category: 'Package Manager',
-    icon: '📦'
-  },
-  {
-    name: 'yarn',
-    displayName: 'Yarn',
-    category: 'Package Manager',
-    icon: '🧶'
-  },
-  {
-    name: 'pnpm',
-    displayName: 'pnpm',
-    category: 'Package Manager',
-    icon: '📦'
-  },
-  {
-    name: 'pip',
-    displayName: 'pip',
-    category: 'Package Manager',
-    icon: '📦'
-  },
-  {
-    name: 'pip3',
-    displayName: 'pip3',
-    category: 'Package Manager',
-    icon: '📦'
-  },
-  {
-    name: 'go',
-    displayName: 'go mod',
-    category: 'Package Manager',
-    icon: '📦'
-  },
-  {
-    name: 'gem',
-    displayName: 'RubyGems',
-    category: 'Package Manager',
-    icon: '💎'
-  },
-  {
-    name: 'cargo',
-    displayName: 'Cargo',
-    category: 'Package Manager',
-    icon: '📦'
-  },
-  {
-    name: 'composer',
-    displayName: 'Composer',
-    category: 'Package Manager',
-    icon: '🎼'
-  },
-
-  // Version Control
-  {
-    name: 'git',
-    displayName: 'Git',
-    category: 'Version Control',
-    icon: '📂'
-  },
-  {
-    name: 'svn',
-    displayName: 'SVN',
-    category: 'Version Control',
-    icon: '📂'
-  },
-  {
-    name: 'hg',
-    displayName: 'Mercurial',
-    category: 'Version Control',
-    icon: '📂'
-  },
-
-  // Build Tool
-  {
-    name: 'make',
-    displayName: 'Make',
-    category: 'Build Tool',
-    icon: '🔨'
-  },
-  {
-    name: 'cmake',
-    displayName: 'CMake',
-    category: 'Build Tool',
-    icon: '🔨'
-  },
-  {
-    name: 'gradle',
-    displayName: 'Gradle',
-    category: 'Build Tool',
-    icon: '🔨'
-  },
-  {
-    name: 'mvn',
-    displayName: 'Maven',
-    category: 'Build Tool',
-    icon: '🔨'
-  },
-  {
-    name: 'dotnet',
-    displayName: '.NET CLI',
-    category: 'Build Tool',
-    icon: '🔨'
-  },
-  {
-    name: 'xcodebuild',
-    displayName: 'Xcode Build',
-    category: 'Build Tool',
-    icon: '🔨'
-  },
-
-  // Container
-  {
-    name: 'docker',
-    displayName: 'Docker',
-    category: 'Container',
-    icon: '🐳'
-  },
-  {
-    name: 'docker-compose',
-    displayName: 'Docker Compose',
-    category: 'Container',
-    icon: '🐳'
-  },
-  {
-    name: 'podman',
-    displayName: 'Podman',
-    category: 'Container',
-    icon: '🐳'
-  },
-
-  // IDE/Editor (通过检查常见路径)
+  // IDE/Editor
   {
     name: 'code',
     displayName: 'VS Code',
@@ -236,92 +40,36 @@ const TOOLS: Omit<ToolInfo, 'installed' | 'version'>[] = [
     icon: '💻'
   },
 
-  // Other
+  // CLI 工具
   {
-    name: 'nvm',
-    displayName: 'NVM',
-    category: 'Other',
-    icon: '🔧'
+    name: 'git',
+    displayName: 'Git',
+    category: 'CLI',
+    icon: '📂'
   },
   {
-    name: 'brew',
-    displayName: 'Homebrew',
-    category: 'Other',
-    icon: '🍺'
+    name: 'svn',
+    displayName: 'SVN',
+    category: 'CLI',
+    icon: '📂'
   },
   {
-    name: 'brew',
-    displayName: 'Homebrew',
-    category: 'Other',
-    icon: '🍺'
-  },
-  {
-    name: 'flutter',
-    displayName: 'Flutter',
-    category: 'Other',
-    icon: '🦋'
-  },
-  {
-    name: 'terraform',
-    displayName: 'Terraform',
-    category: 'Other',
-    icon: '🏗️'
-  },
-  {
-    name: 'kubectl',
-    displayName: 'kubectl',
-    category: 'Other',
-    icon: '☸️'
-  },
-  {
-    name: 'aws',
-    displayName: 'AWS CLI',
-    category: 'Other',
-    icon: '☁️'
+    name: 'hg',
+    displayName: 'Mercurial',
+    category: 'CLI',
+    icon: '📂'
   }
 ]
 
 // 获取版本命令映射
 const VERSION_COMMANDS: Record<string, string> = {
-  node: 'node --version',
-  python: 'python --version',
-  python3: 'python3 --version',
-  java: 'java -version',
-  go: 'go version',
-  ruby: 'ruby --version',
-  rustc: 'rustc --version',
-  dart: 'dart --version',
-  swift: 'swift --version',
-  php: 'php --version',
-  npm: 'npm --version',
-  yarn: 'yarn --version',
-  pnpm: 'pnpm --version',
-  pip: 'pip --version',
-  pip3: 'pip3 --version',
-  gem: 'gem --version',
-  cargo: 'cargo --version',
-  composer: 'composer --version',
-  git: 'git --version',
-  svn: 'svn --version',
-  hg: 'hg --version',
-  make: 'make --version',
-  cmake: 'cmake --version',
-  gradle: 'gradle --version',
-  mvn: 'mvn --version',
-  dotnet: 'dotnet --version',
-  docker: 'docker --version',
-  'docker-compose': 'docker-compose --version',
-  podman: 'podman --version',
   code: 'code --version',
   idea: 'idea --version',
   vim: 'vim --version',
   nvim: 'nvim --version',
-  nvm: 'nvm --version',
-  brew: 'brew --version',
-  flutter: 'flutter --version',
-  terraform: 'terraform --version',
-  kubectl: 'kubectl version --client',
-  aws: 'aws --version'
+  git: 'git --version',
+  svn: 'svn --version',
+  hg: 'hg --version'
 }
 
 async function getToolVersion(toolName: string): Promise<string | undefined> {
@@ -344,7 +92,8 @@ async function getToolVersion(toolName: string): Promise<string | undefined> {
 
 async function isToolInstalled(toolName: string): Promise<boolean> {
   try {
-    await execAsync(`which ${toolName}`, {
+    const checkCommand = process.platform === 'win32' ? 'where' : 'which'
+    await execAsync(`${checkCommand} ${toolName}`, {
       timeout: 2000
     })
     return true
@@ -353,12 +102,67 @@ async function isToolInstalled(toolName: string): Promise<boolean> {
   }
 }
 
-export async function scanDevelopmentTools(): Promise<ToolInfo[]> {
-  const results: ToolInfo[] = []
+// 专门检查 IDE 是否安装（通过常见路径和可执行文件）
+async function isIDEInstalled(toolName: string): Promise<boolean> {
+  const { existsSync } = await import('fs')
+  const { join } = await import('path')
 
+  // 定义常见 IDE 路径
+  const idePaths: Record<string, string[]> = {
+    code: [
+      // Windows
+      join('C:\\', 'Program Files', 'Microsoft VS Code', 'Code.exe'),
+      join('C:\\', 'Program Files (x86)', 'Microsoft VS Code', 'Code.exe'),
+      join(process.env.LOCALAPPDATA || '', 'Programs', 'Microsoft VS Code', 'Code.exe'),
+      // macOS
+      '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
+      '/usr/local/bin/code',
+      // Linux
+      '/usr/bin/code',
+      '/usr/local/bin/code'
+    ],
+    idea: [
+      // Windows
+      join('C:\\', 'Program Files', 'JetBrains', 'IntelliJ IDEA 2024.2', 'bin', 'idea64.exe'),
+      join('C:\\', 'Program Files', 'JetBrains', 'IntelliJ IDEA', 'bin', 'idea64.exe'),
+      // macOS
+      '/Applications/IntelliJ IDEA.app/Contents/MacOS/idea',
+      // Linux
+      '/usr/bin/idea',
+      '/usr/local/bin/idea'
+    ],
+    vim: ['/usr/bin/vim', '/usr/local/bin/vim', 'C:\\Program Files\\Vim\\vim90\\vim.exe'],
+    nvim: [
+      '/usr/local/bin/nvim',
+      '/usr/bin/nvim',
+      join(process.env.LOCALAPPDATA || '', 'nvim-bin', 'nvim.exe')
+    ]
+  }
+
+  // 先用命令检查
+  const commandCheck = await isToolInstalled(toolName)
+  if (commandCheck) return true
+
+  // 检查特定路径
+  const paths = idePaths[toolName]
+  if (paths) {
+    for (const path of paths) {
+      try {
+        if (existsSync(path)) return true
+      } catch {}
+    }
+  }
+
+  return false
+}
+
+export async function scanDevelopmentTools(): Promise<ToolInfo[]> {
   // 并发检查所有工具
   const checks = TOOLS.map(async (tool) => {
-    const installed = await isToolInstalled(tool.name)
+    // IDE 使用专门的检查方法
+    const installed =
+      tool.category === 'IDE' ? await isIDEInstalled(tool.name) : await isToolInstalled(tool.name)
+
     if (!installed) {
       return { ...tool, installed: false, version: undefined }
     }
@@ -368,47 +172,26 @@ export async function scanDevelopmentTools(): Promise<ToolInfo[]> {
   })
 
   const scannedTools = await Promise.all(checks)
-
-  // 移除重复的工具（如 python 和 python3）
-  const uniqueTools = new Map<string, ToolInfo>()
-
-  for (const tool of scannedTools) {
-    const key = tool.displayName
-    // 如果已存在且未安装，替换为已安装的版本
-    if (!uniqueTools.has(key) || (tool.installed && !uniqueTools.get(key)!.installed)) {
-      uniqueTools.set(key, tool)
-    }
-  }
-
-  return Array.from(uniqueTools.values())
+  return scannedTools
 }
 
 export function categorizeTools(tools: ToolInfo[]): Record<string, ToolInfo[]> {
   const categorized: Record<string, ToolInfo[]> = {
-    Runtime: [],
-    'Package Manager': [],
-    'Version Control': [],
-    'Build Tool': [],
-    Container: [],
     IDE: [],
-    Other: []
+    CLI: []
   }
 
   for (const tool of tools) {
-    if (categorized[tool.category]) {
-      categorized[tool.category].push(tool)
-    } else {
-      categorized.Other.push(tool)
-    }
+    categorized[tool.category].push(tool)
   }
 
   return categorized
 }
 
 export function getToolsStats(tools: ToolInfo[]) {
-  const installed = tools.filter(t => t.installed).length
+  const installed = tools.filter((t) => t.installed).length
   const total = tools.length
-  const categories = new Set(tools.map(t => t.category)).size
+  const categories = new Set(tools.map((t) => t.category)).size
 
   return {
     installed,

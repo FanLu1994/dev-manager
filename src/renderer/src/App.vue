@@ -104,13 +104,8 @@ function getLanguageAccent(language: string): string {
 
 function getCategoryAccent(category: string): string {
   const accents: Record<string, string> = {
-    Runtime: '#3b82f6',
-    'Package Manager': '#8b5cf6',
-    'Version Control': '#f59e0b',
-    'Build Tool': '#10b981',
-    Container: '#06b6d4',
     IDE: '#ef4444',
-    Other: '#6b7280'
+    CLI: '#3b82f6'
   }
   return accents[category] || '#6b7280'
 }

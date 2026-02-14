@@ -21,7 +21,7 @@ export interface ToolInfo {
   version?: string
   installed: boolean
   icon?: string
-  category: 'Runtime' | 'Package Manager' | 'Version Control' | 'Build Tool' | 'Container' | 'IDE' | 'Other'
+  category: 'IDE' | 'CLI'
 }
 
 export interface ToolsScanResult {
@@ -53,6 +53,9 @@ declare global {
       addRecentProject: (name: string, path: string) => Promise<void>
       getRecentProjects: () => Promise<RecentProject[]>
       clearRecentProjects: () => Promise<void>
+      windowMinimize: () => void
+      windowMaximize: () => void
+      windowClose: () => void
     }
   }
 }

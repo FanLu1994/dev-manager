@@ -22,7 +22,7 @@ export interface ToolInfo {
   version?: string
   installed: boolean
   icon?: string
-  category: 'Runtime' | 'Package Manager' | 'Version Control' | 'Build Tool' | 'Container' | 'IDE' | 'Other'
+  category: 'IDE' | 'CLI'
 }
 
 export interface ToolsScanResult {
@@ -51,7 +51,10 @@ const api = {
   openWithVSCode: (projectPath: string) => ipcRenderer.invoke('open-with-vscode', projectPath),
   addRecentProject: (name: string, path: string) => ipcRenderer.invoke('add-recent-project', { name, path }),
   getRecentProjects: () => ipcRenderer.invoke('get-recent-projects'),
-  clearRecentProjects: () => ipcRenderer.invoke('clear-recent-projects')
+  clearRecentProjects: () => ipcRenderer.invoke('clear-recent-projects'),
+  windowMinimize: () => ipcRenderer.send('window-minimize'),
+  windowMaximize: () => ipcRenderer.send('window-maximize'),
+  windowClose: () => ipcRenderer.send('window-close')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

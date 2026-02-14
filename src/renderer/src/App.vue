@@ -2,12 +2,16 @@
 import { ref, computed, onMounted } from 'vue'
 import type { ProjectInfo, ScanResult, ToolsScanResult } from '../../preload/index'
 
+type ThemeMode = 'dark' | 'light'
+const THEME_STORAGE_KEY = 'dev-manager-theme'
+
 const scanResult = ref<ScanResult | null>(null)
 const toolsResult = ref<ToolsScanResult | null>(null)
 const loading = ref(false)
 const currentView = ref('language')
 const currentTab = ref('projects') // 'projects' | 'tools'
 const selectedFolder = ref<string | null>(null)
+const theme = ref<ThemeMode>('dark')
 
 const groupedProjects = computed(() => {
   if (!scanResult.value) return {}
@@ -38,9 +42,32 @@ const toolsStats = computed(() => {
 })
 
 onMounted(async () => {
+  initTheme()
   // 自动扫描工具
   await scanTools()
 })
+
+function initTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    applyTheme(savedTheme)
+    return
+  }
+
+  const preferredTheme: ThemeMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light'
+  applyTheme(preferredTheme)
+}
+
+function applyTheme(nextTheme: ThemeMode) {
+  theme.value = nextTheme
+  localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+}
+
+function toggleTheme() {
+  applyTheme(theme.value === 'dark' ? 'light' : 'dark')
+}
 
 async function selectFolder() {
   const folder = await window.api.selectFolder()
@@ -124,7 +151,7 @@ function windowClose() {
 </script>
 
 <template>
-  <div class="app-container">
+  <div class="app-container" :class="`theme-${theme}`" :data-theme="theme">
     <div class="app-shell">
       <!-- Header -->
       <header class="app-header">
@@ -141,6 +168,15 @@ function windowClose() {
           </div>
         </div>
         <div class="header-actions">
+          <button class="btn-theme-toggle" @click="toggleTheme" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
+            <svg v-if="theme === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25M12 18.75V21M4.636 4.636l1.591 1.591M17.773 17.773l1.591 1.591M3 12h2.25M18.75 12H21M4.636 19.364l1.591-1.591M17.773 6.227l1.591-1.591M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0112 21c-5.385 0-9.75-4.365-9.75-9.75 0-4.27 2.744-7.9 6.565-9.222.293-.101.594.171.521.472a7.501 7.501 0 009.472 9.472c.301-.073.573.228.472.521a9.753 9.753 0 012.472 2.509z" />
+            </svg>
+            <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
+          </button>
           <button v-if="currentTab === 'projects'" class="btn-primary" @click="selectFolder" :disabled="loading">
             <span v-if="!loading" class="btn-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -376,15 +412,61 @@ function windowClose() {
 }
 
 .app-container {
+  --bg-overlay-a: rgba(59, 130, 246, 0.16);
+  --bg-overlay-b: rgba(139, 92, 246, 0.12);
+  --bg-canvas: #0f1115;
+  --text-primary: #f4f4f5;
+  --text-secondary: #9ca0a6;
+  --text-muted: #737478;
+  --text-subtle: #6d6d70;
+  --surface-header: rgba(24, 27, 34, 0.8);
+  --surface-soft: rgba(255, 255, 255, 0.03);
+  --surface-hover: rgba(255, 255, 255, 0.05);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(255, 255, 255, 0.02);
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border-normal: rgba(255, 255, 255, 0.1);
+  --control-text: #737478;
+  --shadow-1: rgba(0, 0, 0, 0.2);
+  --shadow-2: rgba(0, 0, 0, 0.25);
+  --button-primary-bg: #f4f4f5;
+  --button-primary-text: #1c1c1e;
+  --button-primary-hover-bg: #ffffff;
+  --toggle-active-bg: #3a3a3c;
+
   min-height: 100vh;
   background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(59, 130, 246, 0.16), transparent 55%),
-    radial-gradient(1000px 500px at 100% 0%, rgba(139, 92, 246, 0.12), transparent 50%),
-    #0f1115;
+    radial-gradient(1200px 600px at 15% -10%, var(--bg-overlay-a), transparent 55%),
+    radial-gradient(1000px 500px at 100% 0%, var(--bg-overlay-b), transparent 50%),
+    var(--bg-canvas);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #e7e9ee;
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.app-container.theme-light {
+  --bg-overlay-a: rgba(14, 116, 144, 0.16);
+  --bg-overlay-b: rgba(15, 118, 110, 0.12);
+  --bg-canvas: #f4f7fb;
+  --text-primary: #111827;
+  --text-secondary: #374151;
+  --text-muted: #6b7280;
+  --text-subtle: #9ca3af;
+  --surface-header: rgba(245, 248, 252, 0.84);
+  --surface-soft: rgba(255, 255, 255, 0.76);
+  --surface-hover: rgba(241, 245, 249, 0.95);
+  --surface-strong: rgba(226, 232, 240, 0.9);
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --border-soft: rgba(148, 163, 184, 0.3);
+  --border-normal: rgba(148, 163, 184, 0.4);
+  --control-text: #64748b;
+  --shadow-1: rgba(15, 23, 42, 0.08);
+  --shadow-2: rgba(15, 23, 42, 0.12);
+  --button-primary-bg: #111827;
+  --button-primary-text: #f9fafb;
+  --button-primary-hover-bg: #1f2937;
+  --toggle-active-bg: #ffffff;
 }
 
 .app-shell {
@@ -395,9 +477,9 @@ function windowClose() {
 
 /* Header */
 .app-header {
-  background: rgba(24, 27, 34, 0.8);
+  background: var(--surface-header);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-soft);
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -427,14 +509,14 @@ function windowClose() {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: #737478;
+  color: var(--control-text);
   cursor: pointer;
   transition: all 0.1s ease;
 }
 
 .window-control:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f4f4f5;
+  background: var(--surface-strong);
+  color: var(--text-primary);
 }
 
 .window-control.close:hover {
@@ -473,14 +555,14 @@ function windowClose() {
 .brand-text h1 {
   font-size: 16px;
   font-weight: 600;
-  color: #f4f4f5;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 .brand-text span {
   font-size: 11px;
-  color: #737478;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -504,7 +586,7 @@ function windowClose() {
   padding: 16px 24px 0;
   display: flex;
   gap: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .tab-btn {
@@ -517,24 +599,50 @@ function windowClose() {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #737478;
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.12s ease;
 }
 
 .tab-btn:hover {
-  color: #a1a1aa;
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  background: var(--surface-soft);
 }
 
 .tab-btn.active {
-  color: #f4f4f5;
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  background: var(--surface-strong);
 }
 
 .tab-btn svg {
   width: 17px;
   height: 17px;
+}
+
+.btn-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--surface-soft);
+  color: var(--text-primary);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-theme-toggle:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-normal);
+  transform: translateY(-1px);
+}
+
+.btn-theme-toggle svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Buttons */
@@ -543,21 +651,21 @@ function windowClose() {
   align-items: center;
   gap: 8px;
   padding: 9px 16px;
-  background: #f4f4f5;
-  color: #1c1c1e;
+  background: var(--button-primary-bg);
+  color: var(--button-primary-text);
   border: none;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.12s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px var(--shadow-1);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #fff;
+  background: var(--button-primary-hover-bg);
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 6px var(--shadow-2);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -577,7 +685,7 @@ function windowClose() {
 .btn-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #1c1c1e;
+  border: 2px solid currentColor;
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
@@ -592,8 +700,8 @@ function windowClose() {
   align-items: center;
   padding: 10px 20px;
   background: transparent;
-  color: #f4f4f5;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  border: 1px solid var(--border-normal);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -602,8 +710,8 @@ function windowClose() {
 }
 
 .btn-outline:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: var(--surface-hover);
+  border-color: var(--border-normal);
 }
 
 /* Main */
@@ -628,14 +736,14 @@ function windowClose() {
 .empty-icon {
   width: 64px;
   height: 64px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  color: #6d6d70;
+  color: var(--text-subtle);
 }
 
 .empty-icon svg {
@@ -646,14 +754,14 @@ function windowClose() {
 .empty-state h2 {
   font-size: 20px;
   font-weight: 600;
-  color: #f4f4f5;
+  color: var(--text-primary);
   margin-bottom: 8px;
   letter-spacing: -0.02em;
 }
 
 .empty-state p {
   font-size: 14px;
-  color: #737478;
+  color: var(--text-muted);
   max-width: 320px;
   margin-bottom: 24px;
   line-height: 1.6;
@@ -665,8 +773,8 @@ function windowClose() {
   align-items: center;
   gap: 20px;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   margin-bottom: 24px;
 }
@@ -679,7 +787,7 @@ function windowClose() {
 
 .stat-label {
   font-size: 11px;
-  color: #737478;
+  color: var(--text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -688,21 +796,21 @@ function windowClose() {
 .stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: #f4f4f5;
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
 .stat-divider {
   width: 1px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-normal);
 }
 
 /* View Toggle */
 .view-toggle {
   display: inline-flex;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 3px;
   margin-bottom: 24px;
@@ -715,19 +823,19 @@ function windowClose() {
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #9ca0a6;
+  color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.12s ease;
 }
 
 .toggle-btn:hover {
-  color: #c5c7c9;
+  color: var(--text-primary);
 }
 
 .toggle-btn.active {
-  background: #3a3a3c;
-  color: #f4f4f5;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  background: var(--toggle-active-bg);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px var(--shadow-1);
 }
 
 /* Categories */
@@ -764,13 +872,13 @@ function windowClose() {
 .category-header h3 {
   font-size: 15px;
   font-weight: 600;
-  color: #f4f4f5;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .category-count {
   font-size: 12px;
-  color: #737478;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -782,8 +890,8 @@ function windowClose() {
 }
 
 .project-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
   padding: 16px;
   transition: all 0.12s ease;
@@ -791,10 +899,10 @@ function windowClose() {
 }
 
 .project-card:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: var(--surface-hover);
+  border-color: var(--border-normal);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px var(--shadow-1);
 }
 
 .card-header {
@@ -807,7 +915,7 @@ function windowClose() {
 .project-name {
   font-size: 14px;
   font-weight: 600;
-  color: #f4f4f5;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
   word-break: break-all;
 }
@@ -815,14 +923,14 @@ function windowClose() {
 .git-icon {
   width: 14px;
   height: 14px;
-  color: #737478;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .project-path {
   font-size: 11px;
   font-family: 'JetBrains Mono', monospace;
-  color: #6d6d70;
+  color: var(--text-subtle);
   margin-bottom: 12px;
   word-break: break-all;
   line-height: 1.5;
@@ -838,17 +946,17 @@ function windowClose() {
 .badge {
   display: inline-flex;
   padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-normal);
   border-radius: 5px;
   font-size: 11px;
   font-weight: 500;
-  color: #9ca0a6;
+  color: var(--text-secondary);
 }
 
 .description {
   font-size: 11px;
-  color: #737478;
+  color: var(--text-muted);
 }
 
 /* Tools Grid */
@@ -863,17 +971,17 @@ function windowClose() {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-soft);
+  border: 1px solid var(--border-normal);
   border-radius: 8px;
   transition: all 0.12s ease;
 }
 
 .tool-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: var(--surface-hover);
+  border-color: var(--border-normal);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px var(--shadow-1);
 }
 
 .tool-icon {
@@ -889,14 +997,14 @@ function windowClose() {
 .tool-name {
   font-size: 13px;
   font-weight: 600;
-  color: #f4f4f5;
+  color: var(--text-primary);
   margin-bottom: 2px;
   letter-spacing: -0.01em;
 }
 
 .tool-version {
   font-size: 11px;
-  color: #737478;
+  color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
   overflow: hidden;
@@ -916,20 +1024,20 @@ function windowClose() {
 .no-projects svg {
   width: 42px;
   height: 42px;
-  color: #6d6d70;
+  color: var(--text-subtle);
   margin-bottom: 16px;
 }
 
 .no-projects p {
   font-size: 15px;
   font-weight: 500;
-  color: #9ca0a6;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .no-projects span {
   font-size: 13px;
-  color: #737478;
+  color: var(--text-muted);
 }
 
 /* Scrollbar - Hidden */

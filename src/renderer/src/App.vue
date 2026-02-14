@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { ProjectInfo, ScanResult, ToolInfo, ToolsScanResult } from '../../../preload'
+import type { ProjectInfo, ScanResult, ToolsScanResult } from '../../preload/index'
 
 const scanResult = ref<ScanResult | null>(null)
 const toolsResult = ref<ToolsScanResult | null>(null)
@@ -31,9 +31,7 @@ const totalProjects = computed(() => {
   return scanResult.value?.projects.length || 0
 })
 
-const totalTools = computed(() => {
-  return toolsResult.value?.stats.installed || 0
-})
+
 
 const toolsStats = computed(() => {
   return toolsResult.value?.stats || { installed: 0, total: 0, categories: 0, percentage: 0 }
@@ -116,13 +114,26 @@ function getCategoryAccent(category: string): string {
   }
   return accents[category] || '#6b7280'
 }
+
+function windowMinimize() {
+  window.api.windowMinimize()
+}
+
+function windowMaximize() {
+  window.api.windowMaximize()
+}
+
+function windowClose() {
+  window.api.windowClose()
+}
 </script>
 
 <template>
   <div class="app-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-content">
+    <div class="app-shell">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-content">
         <div class="brand">
           <div class="brand-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -154,11 +165,29 @@ function getCategoryAccent(category: string): string {
             <span>{{ loading ? 'Scanning...' : 'Rescan Tools' }}</span>
           </button>
         </div>
-      </div>
-    </header>
+          <!-- Window Controls -->
+          <div class="window-controls">
+            <button class="window-control" @click="windowMinimize" title="Minimize">
+              <svg viewBox="0 0 12 12" fill="currentColor">
+                <rect x="2" y="9" width="8" height="1" rx="0.5"/>
+              </svg>
+            </button>
+            <button class="window-control" @click="windowMaximize" title="Maximize">
+              <svg viewBox="0 0 12 12" fill="currentColor">
+                <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="0.8"/>
+              </svg>
+            </button>
+            <button class="window-control close" @click="windowClose" title="Close">
+              <svg viewBox="0 0 12 12" fill="currentColor">
+                <path d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
 
-    <!-- Tab Navigation -->
-    <nav class="tab-nav">
+      <!-- Tab Navigation -->
+      <nav class="tab-nav">
       <button
         @click="currentTab = 'projects'"
         :class="['tab-btn', { active: currentTab === 'projects' }]"
@@ -177,10 +206,10 @@ function getCategoryAccent(category: string): string {
         </svg>
         <span>Tools</span>
       </button>
-    </nav>
+      </nav>
 
-    <!-- Main -->
-    <main class="app-main">
+      <!-- Main -->
+      <main class="app-main">
       <!-- Projects Tab -->
       <div v-if="currentTab === 'projects'">
         <!-- Empty State -->
@@ -343,121 +372,180 @@ function getCategoryAccent(category: string): string {
           </div>
         </div>
       </div>
-    </main>
+      </main>
+    </div>
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :deep(*) {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 .app-container {
   min-height: 100vh;
-  background: #0a0a0b;
-  font-family: 'Manrope', -apple-system, sans-serif;
-  color: #e4e4e7;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(59, 130, 246, 0.16), transparent 55%),
+    radial-gradient(1000px 500px at 100% 0%, rgba(139, 92, 246, 0.12), transparent 50%),
+    #0f1115;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #e7e9ee;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app-shell {
+  min-height: 100vh;
+  overflow: hidden;
+  background: transparent;
 }
 
 /* Header */
 .app-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: rgba(10, 10, 11, 0.8);
-  backdrop-filter: blur(20px);
+  background: rgba(24, 27, 34, 0.8);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  -webkit-app-region: drag;
+  user-select: none;
 }
 
 .header-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: 18px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.window-control {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #737478;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.window-control:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
+.window-control.close:hover {
+  background: #e81121;
+  color: white;
+}
+
+.window-control svg {
+  width: 12px;
+  height: 12px;
+}
+
 .brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .brand-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .brand-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .brand-text h1 {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
-  color: #fafafa;
+  color: #f4f4f5;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 .brand-text span {
-  font-size: 12px;
-  color: #71717a;
+  font-size: 11px;
+  color: #737478;
   font-weight: 500;
 }
 
 .header-actions {
   display: flex;
+  gap: 10px;
+  -webkit-app-region: no-drag;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
   gap: 12px;
+  -webkit-app-region: no-drag;
 }
 
 /* Tab Navigation */
 .tab-nav {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px 24px 0;
+  padding: 16px 24px 0;
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .tab-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 8px 16px;
   background: transparent;
   border: none;
-  border-radius: 10px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
-  color: #71717a;
+  color: #737478;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .tab-btn:hover {
   color: #a1a1aa;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .tab-btn.active {
-  color: #fafafa;
-  background: rgba(255, 255, 255, 0.06);
+  color: #f4f4f5;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .tab-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 /* Buttons */
@@ -465,36 +553,42 @@ function getCategoryAccent(category: string): string {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 18px;
-  background: #fafafa;
-  color: #18181b;
+  padding: 9px 16px;
+  background: #f4f4f5;
+  color: #1c1c1e;
   border: none;
-  border-radius: 9px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #f4f4f5;
+  background: #fff;
   transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-primary:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .btn-primary svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .btn-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #18181b;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #1c1c1e;
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
@@ -507,20 +601,20 @@ function getCategoryAccent(category: string): string {
 .btn-outline {
   display: inline-flex;
   align-items: center;
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: transparent;
-  color: #fafafa;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 9px;
-  font-size: 14px;
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .btn-outline:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255,255,255,0.15);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* Main */
@@ -528,6 +622,8 @@ function getCategoryAccent(category: string): string {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px 24px 60px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
 /* Empty State */
@@ -536,41 +632,41 @@ function getCategoryAccent(category: string): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 180px);
   text-align: center;
 }
 
 .empty-icon {
-  width: 72px;
-  height: 72px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 20px;
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
-  color: #52525b;
+  margin-bottom: 20px;
+  color: #6d6d70;
 }
 
 .empty-icon svg {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
 }
 
 .empty-state h2 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  color: #fafafa;
-  margin-bottom: 10px;
+  color: #f4f4f5;
+  margin-bottom: 8px;
   letter-spacing: -0.02em;
 }
 
 .empty-state p {
-  font-size: 15px;
-  color: #71717a;
-  max-width: 340px;
-  margin-bottom: 28px;
+  font-size: 14px;
+  color: #737478;
+  max-width: 320px;
+  margin-bottom: 24px;
   line-height: 1.6;
 }
 
@@ -578,12 +674,12 @@ function getCategoryAccent(category: string): string {
 .stats-bar {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 20px 24px;
-  background: rgba(255, 255, 255, 0.02);
+  gap: 20px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 14px;
-  margin-bottom: 32px;
+  border-radius: 12px;
+  margin-bottom: 24px;
 }
 
 .stat-item {
@@ -593,69 +689,69 @@ function getCategoryAccent(category: string): string {
 }
 
 .stat-label {
-  font-size: 12px;
-  color: #71717a;
+  font-size: 11px;
+  color: #737478;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
-  color: #fafafa;
-  letter-spacing: -0.03em;
+  color: #f4f4f5;
+  letter-spacing: -0.02em;
 }
 
 .stat-divider {
   width: 1px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.08);
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* View Toggle */
 .view-toggle {
   display: inline-flex;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 4px;
-  margin-bottom: 32px;
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 24px;
 }
 
 .toggle-btn {
-  padding: 10px 20px;
+  padding: 8px 16px;
   background: transparent;
   border: none;
-  border-radius: 7px;
-  font-size: 14px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 500;
-  color: #a1a1aa;
+  color: #9ca0a6;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .toggle-btn:hover {
-  color: #d4d4d8;
+  color: #c5c7c9;
 }
 
 .toggle-btn.active {
-  background: #27272a;
-  color: #fafafa;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  background: #3a3a3c;
+  color: #f4f4f5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* Categories */
 .categories {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 32px;
 }
 
 .category-section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .category-header {
@@ -667,7 +763,7 @@ function getCategoryAccent(category: string): string {
 .category-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .category-dot {
@@ -677,67 +773,68 @@ function getCategoryAccent(category: string): string {
 }
 
 .category-header h3 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #fafafa;
+  color: #f4f4f5;
   letter-spacing: -0.01em;
 }
 
 .category-count {
-  font-size: 13px;
-  color: #71717a;
+  font-size: 12px;
+  color: #737478;
   font-weight: 500;
 }
 
 /* Projects Grid */
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
 }
 
 .project-card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 18px;
-  transition: all 0.15s ease;
+  border-radius: 10px;
+  padding: 16px;
+  transition: all 0.12s ease;
   cursor: default;
 }
 
 .project-card:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .card-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .project-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #fafafa;
+  color: #f4f4f5;
   letter-spacing: -0.01em;
   word-break: break-all;
 }
 
 .git-icon {
-  width: 16px;
-  height: 16px;
-  color: #71717a;
+  width: 14px;
+  height: 14px;
+  color: #737478;
   flex-shrink: 0;
 }
 
 .project-path {
-  font-size: 12px;
+  font-size: 11px;
   font-family: 'JetBrains Mono', monospace;
-  color: #52525b;
-  margin-bottom: 14px;
+  color: #6d6d70;
+  margin-bottom: 12px;
   word-break: break-all;
   line-height: 1.5;
 }
@@ -745,43 +842,43 @@ function getCategoryAccent(category: string): string {
 .card-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .badge {
   display: inline-flex;
-  padding: 4px 10px;
+  padding: 3px 8px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  font-size: 11px;
   font-weight: 500;
-  color: #d4d4d8;
+  color: #9ca0a6;
 }
 
 .description {
-  font-size: 12px;
-  color: #71717a;
+  font-size: 11px;
+  color: #737478;
 }
 
 /* Tools Grid */
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
 }
 
 .tool-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  transition: all 0.15s ease;
-  opacity: 0.5;
+  border-radius: 8px;
+  transition: all 0.12s ease;
+  opacity: 0.45;
 }
 
 .tool-card.installed {
@@ -791,13 +888,14 @@ function getCategoryAccent(category: string): string {
 }
 
 .tool-card.installed:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .tool-icon {
-  font-size: 24px;
+  font-size: 22px;
   flex-shrink: 0;
 }
 
@@ -807,16 +905,16 @@ function getCategoryAccent(category: string): string {
 }
 
 .tool-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #fafafa;
-  margin-bottom: 4px;
+  color: #f4f4f5;
+  margin-bottom: 2px;
   letter-spacing: -0.01em;
 }
 
 .tool-version {
-  font-size: 12px;
-  color: #71717a;
+  font-size: 11px;
+  color: #737478;
   font-family: 'JetBrains Mono', monospace;
   white-space: nowrap;
   overflow: hidden;
@@ -824,8 +922,8 @@ function getCategoryAccent(category: string): string {
 }
 
 .tool-status {
-  font-size: 12px;
-  color: #52525b;
+  font-size: 11px;
+  color: #6d6d70;
   font-style: italic;
 }
 
@@ -835,45 +933,33 @@ function getCategoryAccent(category: string): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 80px 20px;
+  padding: 60px 20px;
   text-align: center;
 }
 
 .no-projects svg {
-  width: 48px;
-  height: 48px;
-  color: #52525b;
-  margin-bottom: 20px;
+  width: 42px;
+  height: 42px;
+  color: #6d6d70;
+  margin-bottom: 16px;
 }
 
 .no-projects p {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
-  color: #a1a1aa;
-  margin-bottom: 6px;
+  color: #9ca0a6;
+  margin-bottom: 4px;
 }
 
 .no-projects span {
-  font-size: 14px;
-  color: #71717a;
+  font-size: 13px;
+  color: #737478;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
+/* Scrollbar - Hidden */
+:deep(*)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
   background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 5px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
 }
 </style>

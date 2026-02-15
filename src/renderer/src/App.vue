@@ -74,7 +74,6 @@ onMounted(async () => {
   loadProjectToolSelections()
   await loadCachedProjects()
   await loadCachedTools()
-  await scanTools()
 })
 
 async function loadCachedProjects(): Promise<void> {
@@ -278,7 +277,14 @@ async function openProjectInTools(project: ProjectInfo, toolNames: string[]): Pr
   }
 
   if (failedTools.length === toolNames.length) {
-    showNotice('error', '打开失败：所选开发工具均未成功启动')
+    try {
+      await window.api.openProject(project.path)
+      await window.api.addRecentProject(project.name, project.path)
+      showNotice('warning', '所选开发工具启动失败，已回退为默认方式打开项目')
+    } catch (fallbackError) {
+      console.error('Fallback open project failed:', fallbackError)
+      showNotice('error', '打开失败：所选开发工具均未成功启动')
+    }
     return
   }
 
@@ -1109,7 +1115,7 @@ function windowClose(): void {
   border-radius: 10px;
   padding: 16px;
   transition: all 0.12s ease;
-  cursor: default;
+  cursor: pointer;
 }
 
 .project-card:hover {

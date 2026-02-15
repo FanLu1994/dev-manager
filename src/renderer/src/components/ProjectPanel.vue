@@ -93,6 +93,7 @@ const emit = defineEmits<{
               v-for="project in groupedProjects[category]"
               :key="project.path"
               class="project-card"
+              @click="emit('open-project', project)"
             >
               <div class="card-header">
                 <h4 class="project-name">{{ project.name }}</h4>
@@ -110,7 +111,7 @@ const emit = defineEmits<{
                 }}</span>
               </div>
               <div class="card-actions">
-                <button class="action-btn" title="Open" @click="emit('open-project', project)">
+                <button class="action-btn" title="Open" @click.stop="emit('open-project', project)">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path
                       stroke-linecap="round"
@@ -122,7 +123,7 @@ const emit = defineEmits<{
                 <button
                   class="action-btn vscode"
                   title="Open with VS Code"
-                  @click="emit('open-vscode', project)"
+                  @click.stop="emit('open-vscode', project)"
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor">
                     <path
@@ -133,7 +134,7 @@ const emit = defineEmits<{
                 <button
                   class="action-btn"
                   title="Select Tools"
-                  @click="emit('edit-project-tools', project)"
+                  @click.stop="emit('edit-project-tools', project)"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path

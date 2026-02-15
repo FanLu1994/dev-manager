@@ -11,12 +11,14 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { scanProjects, categorizeByLanguage, categorizeByType } from './scanner'
+import { saveProjectsCache, loadProjectsCache, checkProjectExists } from './projects-cache'
 import {
   scanDevelopmentTools,
   categorizeTools,
   confirmUnknownTools,
   getToolsStats,
   openDevelopmentTool,
+  openProjectWithDevelopmentTool,
   type UnknownToolCandidate
 } from './tools-scanner'
 import {
@@ -183,11 +185,31 @@ app.whenReady().then(() => {
   // 扫描项目
   ipcMain.handle('scan-projects', async (_, folderPath: string) => {
     const projects = await scanProjects(folderPath)
+    await saveProjectsCache(folderPath, projects)
     return {
       projects,
       byLanguage: categorizeByLanguage(projects),
       byType: categorizeByType(projects)
     }
+  })
+
+  // 读取缓存项目
+  ipcMain.handle('get-cached-projects', async () => {
+    const cache = await loadProjectsCache()
+    if (!cache) return null
+
+    return {
+      folderPath: cache.folderPath,
+      projects: cache.projects,
+      byLanguage: categorizeByLanguage(cache.projects),
+      byType: categorizeByType(cache.projects),
+      cachedAt: cache.cachedAt
+    }
+  })
+
+  // 检查项目是否存在
+  ipcMain.handle('check-project-exists', async (_, projectPath: string) => {
+    return checkProjectExists(projectPath)
   })
 
   // 扫描开发工具
@@ -231,17 +253,31 @@ app.whenReady().then(() => {
 
   // 打开项目
   ipcMain.handle('open-project', async (_, projectPath: string) => {
+    if (!(await checkProjectExists(projectPath))) {
+      throw new Error('PROJECT_NOT_FOUND')
+    }
     await openProject(projectPath)
   })
 
   // 用 VS Code 打开项目
   ipcMain.handle('open-with-vscode', async (_, projectPath: string) => {
+    if (!(await checkProjectExists(projectPath))) {
+      throw new Error('PROJECT_NOT_FOUND')
+    }
     await openWithVSCode(projectPath)
   })
 
   // 打开开发工具
   ipcMain.handle('open-tool', async (_, toolName: string) => {
     await openDevelopmentTool(toolName)
+  })
+
+  // 用指定开发工具打开项目
+  ipcMain.handle('open-project-with-tool', async (_, toolName: string, projectPath: string) => {
+    if (!(await checkProjectExists(projectPath))) {
+      throw new Error('PROJECT_NOT_FOUND')
+    }
+    await openProjectWithDevelopmentTool(toolName, projectPath)
   })
 
   // 添加到最近项目

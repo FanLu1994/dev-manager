@@ -788,6 +788,10 @@ function launchToolCommand(command: string): void {
   child.unref()
 }
 
+function quoteForCmd(value: string): string {
+  return `"${value.replace(/"/g, '\\"')}"`
+}
+
 export async function openDevelopmentTool(toolName: string): Promise<void> {
   const normalizedName = toolName.trim().toLowerCase()
   if (!normalizedName) {
@@ -808,4 +812,42 @@ export async function openDevelopmentTool(toolName: string): Promise<void> {
   const aliases = getAliases(targetTool)
   const runnableAlias = (await resolveRunnableAlias(aliases)) || aliases[0]
   launchToolCommand(runnableAlias)
+}
+
+export async function openProjectWithDevelopmentTool(
+  toolName: string,
+  projectPath: string
+): Promise<void> {
+  const normalizedName = toolName.trim().toLowerCase()
+  if (!normalizedName) {
+    throw new Error('Tool name is required')
+  }
+  if (!projectPath.trim()) {
+    throw new Error('Project path is required')
+  }
+
+  const customTools = await loadCustomTools()
+  const tools = mergeToolDefinitions(customTools)
+  const targetTool = tools.find((tool) => {
+    if (tool.name.toLowerCase() === normalizedName) return true
+    return getAliases(tool).some((alias) => alias.toLowerCase() === normalizedName)
+  })
+
+  if (!targetTool) {
+    throw new Error(`Tool not found: ${toolName}`)
+  }
+
+  const aliases = getAliases(targetTool)
+  const runnableAlias = (await resolveRunnableAlias(aliases)) || aliases[0]
+
+  if (process.platform === 'win32') {
+    await execAsync(`start "" ${runnableAlias} ${quoteForCmd(projectPath)}`)
+    return
+  }
+
+  const child = spawn(runnableAlias, [projectPath], {
+    detached: true,
+    stdio: 'ignore'
+  })
+  child.unref()
 }

@@ -15,6 +15,11 @@ export interface ScanResult {
   byType: Record<string, ProjectInfo[]>
 }
 
+export interface CachedProjectsResult extends ScanResult {
+  folderPath: string
+  cachedAt: number
+}
+
 export interface ToolInfo {
   name: string
   displayName: string
@@ -50,7 +55,10 @@ declare global {
       scanTools: () => Promise<ToolsScanResult>
       openProject: (projectPath: string) => Promise<void>
       openWithVSCode: (projectPath: string) => Promise<void>
+      openProjectWithTool: (toolName: string, projectPath: string) => Promise<void>
       openTool: (toolName: string) => Promise<void>
+      getCachedProjects: () => Promise<CachedProjectsResult | null>
+      checkProjectExists: (projectPath: string) => Promise<boolean>
       addRecentProject: (name: string, path: string) => Promise<void>
       getRecentProjects: () => Promise<RecentProject[]>
       clearRecentProjects: () => Promise<void>

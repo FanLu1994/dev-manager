@@ -16,6 +16,11 @@ export interface ScanResult {
   byType: Record<string, ProjectInfo[]>
 }
 
+export interface CachedProjectsResult extends ScanResult {
+  folderPath: string
+  cachedAt: number
+}
+
 export interface ToolInfo {
   name: string
   displayName: string
@@ -49,7 +54,12 @@ const api = {
   scanTools: () => ipcRenderer.invoke('scan-tools'),
   openProject: (projectPath: string) => ipcRenderer.invoke('open-project', projectPath),
   openWithVSCode: (projectPath: string) => ipcRenderer.invoke('open-with-vscode', projectPath),
+  openProjectWithTool: (toolName: string, projectPath: string) =>
+    ipcRenderer.invoke('open-project-with-tool', toolName, projectPath),
   openTool: (toolName: string) => ipcRenderer.invoke('open-tool', toolName),
+  getCachedProjects: () => ipcRenderer.invoke('get-cached-projects'),
+  checkProjectExists: (projectPath: string) =>
+    ipcRenderer.invoke('check-project-exists', projectPath),
   addRecentProject: (name: string, path: string) =>
     ipcRenderer.invoke('add-recent-project', { name, path }),
   getRecentProjects: () => ipcRenderer.invoke('get-recent-projects'),

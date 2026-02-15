@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { ProjectInfo, ScanResult, ToolInfo, ToolsScanResult } from '../../preload/index'
+import type {
+  CachedProjectsResult,
+  ProjectInfo,
+  ScanResult,
+  ToolInfo,
+  ToolsScanResult
+} from '../../preload/index'
 import { useTheme } from './composables/useTheme'
 import { getLanguageAccent, getCategoryAccent } from './constants/accent-colors'
 import ProjectPanel from './components/ProjectPanel.vue'
@@ -8,6 +14,16 @@ import ToolsPanel from './components/ToolsPanel.vue'
 
 type ProjectViewMode = 'language' | 'type'
 type CurrentTab = 'projects' | 'tools'
+type NoticeType = 'info' | 'warning' | 'error'
+
+interface UiNotice {
+  type: NoticeType
+  message: string
+}
+
+type ProjectToolSelectionMap = Record<string, string[]>
+
+const PROJECT_TOOL_SELECTIONS_KEY = 'dev-manager-project-tool-selections'
 
 const scanResult = ref<ScanResult | null>(null)
 const toolsResult = ref<ToolsScanResult | null>(null)
@@ -15,6 +31,11 @@ const scanningProjects = ref(false)
 const scanningTools = ref(false)
 const currentView = ref<ProjectViewMode>('language')
 const currentTab = ref<CurrentTab>('projects')
+const uiNotice = ref<UiNotice | null>(null)
+const selectingProject = ref<ProjectInfo | null>(null)
+const selectingToolNames = ref<string[]>([])
+const selectorAutoOpen = ref(false)
+const projectToolSelections = ref<ProjectToolSelectionMap>({})
 const { theme, initTheme, toggleTheme } = useTheme()
 
 const groupedProjects = computed(() => {
@@ -45,8 +66,21 @@ const toolsStats = computed(() => {
 
 onMounted(async () => {
   initTheme()
+  loadProjectToolSelections()
+  await loadCachedProjects()
   await scanTools()
 })
+
+async function loadCachedProjects(): Promise<void> {
+  const cached = (await window.api.getCachedProjects()) as CachedProjectsResult | null
+  if (!cached) return
+
+  scanResult.value = {
+    projects: cached.projects,
+    byLanguage: cached.byLanguage,
+    byType: cached.byType
+  }
+}
 
 async function selectFolder(): Promise<void> {
   const folder = await window.api.selectFolder()
@@ -61,6 +95,7 @@ async function scanProjects(folderPath: string): Promise<void> {
     scanResult.value = await window.api.scanProjects(folderPath)
   } catch (error) {
     console.error('Scan failed:', error)
+    showNotice('error', '扫描项目失败，请重试')
   } finally {
     scanningProjects.value = false
   }
@@ -72,13 +107,14 @@ async function scanTools(): Promise<void> {
     toolsResult.value = await window.api.scanTools()
   } catch (error) {
     console.error('Tools scan failed:', error)
+    showNotice('error', '扫描开发工具失败，请重试')
   } finally {
     scanningTools.value = false
   }
 }
 
 async function openProject(project: ProjectInfo): Promise<void> {
-  await openProjectWith(window.api.openProject, project)
+  await openProjectWithSelectedTools(project)
 }
 
 async function openWithVSCode(project: ProjectInfo): Promise<void> {
@@ -93,8 +129,131 @@ async function openProjectWith(
   opener: (path: string) => Promise<void>,
   project: ProjectInfo
 ): Promise<void> {
+  const exists = await window.api.checkProjectExists(project.path)
+  if (!exists) {
+    showNotice('warning', `项目不存在：${project.path}`)
+    return
+  }
+
   await opener(project.path)
   await window.api.addRecentProject(project.name, project.path)
+}
+
+async function openProjectWithSelectedTools(project: ProjectInfo): Promise<void> {
+  const exists = await window.api.checkProjectExists(project.path)
+  if (!exists) {
+    showNotice('warning', `项目不存在：${project.path}`)
+    return
+  }
+
+  const cachedTools = projectToolSelections.value[project.path] || []
+  if (cachedTools.length === 0) {
+    openToolSelector(project, true)
+    return
+  }
+
+  await openProjectInTools(project, cachedTools)
+}
+
+function openToolSelector(project: ProjectInfo, autoOpen: boolean): void {
+  const availableTools = toolsResult.value?.tools || []
+  if (availableTools.length === 0) {
+    showNotice('warning', '当前没有可用开发工具，请先扫描工具')
+    return
+  }
+
+  selectingProject.value = project
+  selectingToolNames.value = [...(projectToolSelections.value[project.path] || [])]
+  selectorAutoOpen.value = autoOpen
+}
+
+function toggleSelectingTool(toolName: string): void {
+  if (selectingToolNames.value.includes(toolName)) {
+    selectingToolNames.value = selectingToolNames.value.filter((name) => name !== toolName)
+    return
+  }
+  selectingToolNames.value = [...selectingToolNames.value, toolName]
+}
+
+async function confirmToolSelection(): Promise<void> {
+  const project = selectingProject.value
+  if (!project) return
+
+  if (selectingToolNames.value.length === 0) {
+    showNotice('warning', '请至少选择一个开发工具')
+    return
+  }
+
+  projectToolSelections.value = {
+    ...projectToolSelections.value,
+    [project.path]: [...selectingToolNames.value]
+  }
+  saveProjectToolSelections()
+
+  const shouldAutoOpen = selectorAutoOpen.value
+  closeToolSelector()
+
+  if (shouldAutoOpen) {
+    await openProjectInTools(project, projectToolSelections.value[project.path])
+  } else {
+    showNotice('info', '开发工具选择已保存，后续将按此配置打开')
+  }
+}
+
+function closeToolSelector(): void {
+  selectingProject.value = null
+  selectingToolNames.value = []
+  selectorAutoOpen.value = false
+}
+
+async function openProjectInTools(project: ProjectInfo, toolNames: string[]): Promise<void> {
+  const failedTools: string[] = []
+
+  for (const toolName of toolNames) {
+    try {
+      await window.api.openProjectWithTool(toolName, project.path)
+    } catch (error) {
+      console.error(`Failed to open project with tool: ${toolName}`, error)
+      failedTools.push(toolName)
+    }
+  }
+
+  if (failedTools.length === toolNames.length) {
+    showNotice('error', '打开失败：所选开发工具均未成功启动')
+    return
+  }
+
+  await window.api.addRecentProject(project.name, project.path)
+  if (failedTools.length > 0) {
+    showNotice('warning', `部分工具打开失败：${failedTools.join(', ')}`)
+    return
+  }
+  showNotice('info', `已使用 ${toolNames.length} 个开发工具打开项目`)
+}
+
+function editProjectTools(project: ProjectInfo): void {
+  openToolSelector(project, false)
+}
+
+function loadProjectToolSelections(): void {
+  try {
+    const raw = localStorage.getItem(PROJECT_TOOL_SELECTIONS_KEY)
+    if (!raw) return
+
+    const parsed = JSON.parse(raw) as ProjectToolSelectionMap
+    if (!parsed || typeof parsed !== 'object') return
+    projectToolSelections.value = parsed
+  } catch {
+    projectToolSelections.value = {}
+  }
+}
+
+function saveProjectToolSelections(): void {
+  localStorage.setItem(PROJECT_TOOL_SELECTIONS_KEY, JSON.stringify(projectToolSelections.value))
+}
+
+function showNotice(type: NoticeType, message: string): void {
+  uiNotice.value = { type, message }
 }
 
 function windowMinimize(): void {
@@ -232,6 +391,11 @@ function windowClose(): void {
       </header>
 
       <!-- Tab Navigation -->
+      <div v-if="uiNotice" :class="['notice-bar', uiNotice.type]">
+        <span>{{ uiNotice.message }}</span>
+        <button class="notice-close" @click="uiNotice = null">×</button>
+      </div>
+
       <nav class="tab-nav">
         <button
           :class="['tab-btn', { active: currentTab === 'projects' }]"
@@ -276,6 +440,7 @@ function windowClose(): void {
           @update:view="currentView = $event"
           @open-project="openProject"
           @open-vscode="openWithVSCode"
+          @edit-project-tools="editProjectTools"
         />
         <ToolsPanel
           v-if="currentTab === 'tools'"
@@ -287,6 +452,29 @@ function windowClose(): void {
           @open-tool="openTool"
         />
       </main>
+    </div>
+
+    <div v-if="selectingProject" class="modal-overlay" @click.self="closeToolSelector">
+      <div class="modal-card">
+        <h3>Select Tools for {{ selectingProject.name }}</h3>
+        <p>初次可多选，后续会缓存此项目的工具选择；你也可以随时修改。</p>
+
+        <div class="modal-tools">
+          <label v-for="tool in toolsResult?.tools || []" :key="tool.name" class="modal-tool-item">
+            <input
+              type="checkbox"
+              :checked="selectingToolNames.includes(tool.name)"
+              @change="toggleSelectingTool(tool.name)"
+            />
+            <span>{{ tool.displayName }}</span>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-outline" @click="closeToolSelector">Cancel</button>
+          <button class="btn-primary" @click="confirmToolSelection">Save</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -464,6 +652,38 @@ function windowClose(): void {
   display: flex;
   gap: 10px;
   -webkit-app-region: no-drag;
+}
+
+.notice-bar {
+  max-width: 1200px;
+  margin: 10px auto 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-normal);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.notice-bar.info {
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.notice-bar.warning {
+  background: rgba(251, 191, 36, 0.16);
+}
+
+.notice-bar.error {
+  background: rgba(239, 68, 68, 0.16);
+}
+
+.notice-close {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 16px;
+  cursor: pointer;
 }
 
 /* Tab Navigation */
@@ -947,5 +1167,61 @@ function windowClose(): void {
   width: 0;
   height: 0;
   background: transparent;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-card {
+  width: min(560px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border-normal);
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-card h3 {
+  font-size: 18px;
+}
+
+.modal-card p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.modal-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.modal-tool-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  font-size: 13px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 </style>

@@ -36,7 +36,10 @@ function openTool(tool: ToolInfo): void {
       <div v-for="category in toolCategories" :key="category" class="category-section">
         <div class="category-header">
           <div class="category-info">
-            <span class="category-dot" :style="{ backgroundColor: getCategoryAccent(category) }"></span>
+            <span
+              class="category-dot"
+              :style="{ backgroundColor: getCategoryAccent(category) }"
+            ></span>
             <h3>{{ category }}</h3>
           </div>
           <span class="category-count">{{ groupedTools[category].length }} tools</span>

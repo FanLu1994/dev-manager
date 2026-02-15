@@ -1,10 +1,16 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 
 export type ThemeMode = 'dark' | 'light'
 
 const THEME_STORAGE_KEY = 'dev-manager-theme'
 
-export function useTheme() {
+interface UseThemeResult {
+  theme: Ref<ThemeMode>
+  initTheme: () => void
+  toggleTheme: () => void
+}
+
+export function useTheme(): UseThemeResult {
   const theme = ref<ThemeMode>('dark')
 
   function applyTheme(nextTheme: ThemeMode): void {

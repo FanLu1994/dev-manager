@@ -211,10 +211,7 @@ async function detectProjectType(
   return null
 }
 
-export async function scanProjects(
-  rootPath: string,
-  maxDepth = 2
-): Promise<ProjectInfo[]> {
+export async function scanProjects(rootPath: string, maxDepth = 2): Promise<ProjectInfo[]> {
   const projects: ProjectInfo[] = []
   const visited = new Set<string>()
 
@@ -267,7 +264,7 @@ export async function scanProjects(
         const fullPath = join(dirPath, entry.name)
         await scanDir(fullPath, currentDepth + 1)
       }
-    } catch (error) {
+    } catch {
       // 忽略无法访问的目录
     }
   }

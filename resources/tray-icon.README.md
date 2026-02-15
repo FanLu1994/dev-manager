@@ -12,6 +12,7 @@ Place your tray icon file here named `tray-icon.png`.
 ## Quick Start
 
 For development, you can use any PNG icon. Recommended sizes:
+
 - Windows: 16x16px
 - macOS: 22x22px (supports template images)
 - Linux: 32x32px

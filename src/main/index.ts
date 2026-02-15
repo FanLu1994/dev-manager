@@ -1,4 +1,12 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, type MessageBoxOptions } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  type MessageBoxOptions,
+  type MessageBoxReturnValue
+} from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -26,7 +34,7 @@ let isAppQuitting = false
 async function showMessageBoxSafe(
   window: BrowserWindow | undefined,
   options: MessageBoxOptions
-) {
+): Promise<MessageBoxReturnValue> {
   if (window) return dialog.showMessageBox(window, options)
   return dialog.showMessageBox(options)
 }

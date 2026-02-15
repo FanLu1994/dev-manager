@@ -19,9 +19,7 @@ const { theme, initTheme, toggleTheme } = useTheme()
 
 const groupedProjects = computed(() => {
   if (!scanResult.value) return {}
-  return currentView.value === 'language'
-    ? scanResult.value.byLanguage
-    : scanResult.value.byType
+  return currentView.value === 'language' ? scanResult.value.byLanguage : scanResult.value.byType
 })
 
 const groupedTools = computed(() => {
@@ -50,14 +48,14 @@ onMounted(async () => {
   await scanTools()
 })
 
-async function selectFolder() {
+async function selectFolder(): Promise<void> {
   const folder = await window.api.selectFolder()
   if (folder) {
     await scanProjects(folder)
   }
 }
 
-async function scanProjects(folderPath: string) {
+async function scanProjects(folderPath: string): Promise<void> {
   scanningProjects.value = true
   try {
     scanResult.value = await window.api.scanProjects(folderPath)
@@ -68,7 +66,7 @@ async function scanProjects(folderPath: string) {
   }
 }
 
-async function scanTools() {
+async function scanTools(): Promise<void> {
   scanningTools.value = true
   try {
     toolsResult.value = await window.api.scanTools()
@@ -79,11 +77,11 @@ async function scanTools() {
   }
 }
 
-async function openProject(project: ProjectInfo) {
+async function openProject(project: ProjectInfo): Promise<void> {
   await openProjectWith(window.api.openProject, project)
 }
 
-async function openWithVSCode(project: ProjectInfo) {
+async function openWithVSCode(project: ProjectInfo): Promise<void> {
   await openProjectWith(window.api.openWithVSCode, project)
 }
 
@@ -94,20 +92,20 @@ async function openTool(tool: ToolInfo): Promise<void> {
 async function openProjectWith(
   opener: (path: string) => Promise<void>,
   project: ProjectInfo
-) {
+): Promise<void> {
   await opener(project.path)
   await window.api.addRecentProject(project.name, project.path)
 }
 
-function windowMinimize() {
+function windowMinimize(): void {
   window.api.windowMinimize()
 }
 
-function windowMaximize() {
+function windowMaximize(): void {
   window.api.windowMaximize()
 }
 
-function windowClose() {
+function windowClose(): void {
   window.api.windowClose()
 }
 </script>
@@ -118,71 +116,115 @@ function windowClose() {
       <!-- Header -->
       <header class="app-header">
         <div class="header-content">
-        <div class="brand">
-          <div class="brand-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-            </svg>
-          </div>
-          <div class="brand-text">
-            <h1>Dev Manager</h1>
-            <span>Projects & Tools</span>
-          </div>
-        </div>
-        <div class="header-actions">
-          <button class="btn-theme-toggle" @click="toggleTheme" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
-            <svg v-if="theme === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25M12 18.75V21M4.636 4.636l1.591 1.591M17.773 17.773l1.591 1.591M3 12h2.25M18.75 12H21M4.636 19.364l1.591-1.591M17.773 6.227l1.591-1.591M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-            </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0112 21c-5.385 0-9.75-4.365-9.75-9.75 0-4.27 2.744-7.9 6.565-9.222.293-.101.594.171.521.472a7.501 7.501 0 009.472 9.472c.301-.073.573.228.472.521a9.753 9.753 0 012.472 2.509z" />
-            </svg>
-            <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
-          </button>
-          <button
-            v-if="currentTab === 'projects'"
-            class="btn-primary"
-            @click="selectFolder"
-            :disabled="scanningProjects"
-          >
-            <span v-if="!scanningProjects" class="btn-icon">
+          <div class="brand">
+            <div class="brand-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
+                />
               </svg>
-            </span>
-            <span v-else class="btn-spinner"></span>
-            <span>{{ scanningProjects ? 'Scanning...' : 'Select Folder' }}</span>
-          </button>
-          <button
-            v-if="currentTab === 'tools'"
-            class="btn-primary"
-            @click="scanTools"
-            :disabled="scanningTools"
-          >
-            <span v-if="!scanningTools" class="btn-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </div>
+            <div class="brand-text">
+              <h1>Dev Manager</h1>
+              <span>Projects & Tools</span>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button
+              class="btn-theme-toggle"
+              :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+              @click="toggleTheme"
+            >
+              <svg
+                v-if="theme === 'dark'"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 3v2.25M12 18.75V21M4.636 4.636l1.591 1.591M17.773 17.773l1.591 1.591M3 12h2.25M18.75 12H21M4.636 19.364l1.591-1.591M17.773 6.227l1.591-1.591M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
+                />
               </svg>
-            </span>
-            <span v-else class="btn-spinner"></span>
-            <span>{{ scanningTools ? 'Scanning...' : 'Rescan Tools' }}</span>
-          </button>
-        </div>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M21.752 15.002A9.718 9.718 0 0112 21c-5.385 0-9.75-4.365-9.75-9.75 0-4.27 2.744-7.9 6.565-9.222.293-.101.594.171.521.472a7.501 7.501 0 009.472 9.472c.301-.073.573.228.472.521a9.753 9.753 0 012.472 2.509z"
+                />
+              </svg>
+              <span>{{ theme === 'dark' ? 'Light' : 'Dark' }}</span>
+            </button>
+            <button
+              v-if="currentTab === 'projects'"
+              class="btn-primary"
+              :disabled="scanningProjects"
+              @click="selectFolder"
+            >
+              <span v-if="!scanningProjects" class="btn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"
+                  />
+                </svg>
+              </span>
+              <span v-else class="btn-spinner"></span>
+              <span>{{ scanningProjects ? 'Scanning...' : 'Select Folder' }}</span>
+            </button>
+            <button
+              v-if="currentTab === 'tools'"
+              class="btn-primary"
+              :disabled="scanningTools"
+              @click="scanTools"
+            >
+              <span v-if="!scanningTools" class="btn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
+              </span>
+              <span v-else class="btn-spinner"></span>
+              <span>{{ scanningTools ? 'Scanning...' : 'Rescan Tools' }}</span>
+            </button>
+          </div>
           <!-- Window Controls -->
           <div class="window-controls">
-            <button class="window-control" @click="windowMinimize" title="Minimize">
+            <button class="window-control" title="Minimize" @click="windowMinimize">
               <svg viewBox="0 0 12 12" fill="currentColor">
-                <rect x="2" y="9" width="8" height="1" rx="0.5"/>
+                <rect x="2" y="9" width="8" height="1" rx="0.5" />
               </svg>
             </button>
-            <button class="window-control" @click="windowMaximize" title="Maximize">
+            <button class="window-control" title="Maximize" @click="windowMaximize">
               <svg viewBox="0 0 12 12" fill="currentColor">
-                <rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="0.8"/>
+                <rect
+                  x="2"
+                  y="2"
+                  width="8"
+                  height="8"
+                  rx="1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="0.8"
+                />
               </svg>
             </button>
-            <button class="window-control close" @click="windowClose" title="Close">
+            <button class="window-control close" title="Close" @click="windowClose">
               <svg viewBox="0 0 12 12" fill="currentColor">
-                <path d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+                <path
+                  d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5"
+                  stroke="currentColor"
+                  stroke-width="1"
+                  stroke-linecap="round"
+                />
               </svg>
             </button>
           </div>
@@ -191,24 +233,32 @@ function windowClose() {
 
       <!-- Tab Navigation -->
       <nav class="tab-nav">
-      <button
-        @click="currentTab = 'projects'"
-        :class="['tab-btn', { active: currentTab === 'projects' }]"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-        </svg>
-        <span>Projects</span>
-      </button>
-      <button
-        @click="currentTab = 'tools'"
-        :class="['tab-btn', { active: currentTab === 'tools' }]"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-        </svg>
-        <span>Tools</span>
-      </button>
+        <button
+          :class="['tab-btn', { active: currentTab === 'projects' }]"
+          @click="currentTab = 'projects'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
+            />
+          </svg>
+          <span>Projects</span>
+        </button>
+        <button
+          :class="['tab-btn', { active: currentTab === 'tools' }]"
+          @click="currentTab = 'tools'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"
+            />
+          </svg>
+          <span>Tools</span>
+        </button>
       </nav>
 
       <!-- Main -->
@@ -276,9 +326,13 @@ function windowClose() {
   min-height: 100vh;
   background:
     radial-gradient(1200px 600px at 15% -10%, var(--bg-overlay-a), transparent 55%),
-    radial-gradient(1000px 500px at 100% 0%, var(--bg-overlay-b), transparent 50%),
-    var(--bg-canvas);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    radial-gradient(1000px 500px at 100% 0%, var(--bg-overlay-b), transparent 50%), var(--bg-canvas);
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -525,7 +579,9 @@ function windowClose() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-outline {

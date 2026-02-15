@@ -2,10 +2,12 @@ import {
   Tray,
   Menu,
   app,
+  shell,
   nativeImage,
   BrowserWindow,
   type MenuItemConstructorOptions
 } from 'electron'
+import { exec } from 'child_process'
 import path from 'path'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
@@ -169,7 +171,6 @@ export function clearRecentProjects(): void {
 
 // 打开项目的默认方式
 export async function openProject(path: string): Promise<void> {
-  const { shell } = require('electron')
   try {
     await shell.openPath(path)
   } catch (error) {
@@ -180,7 +181,6 @@ export async function openProject(path: string): Promise<void> {
 
 // 使用 VS Code 打开项目
 export async function openWithVSCode(path: string): Promise<void> {
-  const { exec } = require('child_process')
   const command =
     process.platform === 'win32'
       ? `code "${path}"`

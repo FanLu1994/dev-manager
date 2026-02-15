@@ -35,6 +35,20 @@ interface ToolDefinition {
   commandAliases?: string[]
 }
 
+interface WindowsRoots {
+  programFiles: string
+  programFilesX86: string
+  localAppData: string
+  userProfile: string
+}
+
+interface ToolsStats {
+  installed: number
+  total: number
+  categories: number
+  percentage: number
+}
+
 const CUSTOM_TOOLS_FILE = 'custom-tools.json'
 
 const BUILTIN_TOOLS: ToolDefinition[] = [
@@ -263,7 +277,7 @@ const DISCOVERY_KEYWORDS = [
   'gh'
 ]
 
-function getWindowsRoots() {
+function getWindowsRoots(): WindowsRoots {
   const programFiles = process.env.ProgramFiles || 'C:\\Program Files'
   const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'
   const localAppData = process.env.LOCALAPPDATA || ''
@@ -433,9 +447,13 @@ export async function confirmUnknownTools(candidates: UnknownToolCandidate[]): P
 
   const customTools = await loadCustomTools()
   const existingAliases = new Set(
-    [...BUILTIN_TOOLS, ...customTools].flatMap((tool) => getAliases(tool).map((alias) => alias.toLowerCase()))
+    [...BUILTIN_TOOLS, ...customTools].flatMap((tool) =>
+      getAliases(tool).map((alias) => alias.toLowerCase())
+    )
   )
-  const existingNames = new Set([...BUILTIN_TOOLS, ...customTools].map((tool) => tool.name.toLowerCase()))
+  const existingNames = new Set(
+    [...BUILTIN_TOOLS, ...customTools].map((tool) => tool.name.toLowerCase())
+  )
 
   let added = 0
 
@@ -694,7 +712,8 @@ export async function scanDevelopmentTools(): Promise<ToolsScanOutput> {
     const installed = await isToolInstalled(tool)
 
     if (installed) {
-      const version = (await getToolVersion(tool)) || (await tryReadJetBrainsBuildVersion(tool.name))
+      const version =
+        (await getToolVersion(tool)) || (await tryReadJetBrainsBuildVersion(tool.name))
       installedTools.push({ ...tool, installed: true, version })
     }
   }
@@ -723,7 +742,7 @@ export function categorizeTools(tools: ToolInfo[]): Record<string, ToolInfo[]> {
   return categorized
 }
 
-export function getToolsStats(tools: ToolInfo[]) {
+export function getToolsStats(tools: ToolInfo[]): ToolsStats {
   const count = tools.length
   const categories = new Set(tools.map((t) => t.category)).size
 

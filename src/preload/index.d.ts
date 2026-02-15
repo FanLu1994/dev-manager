@@ -29,15 +29,25 @@ export interface ToolInfo {
   category: 'IDE' | 'CLI'
 }
 
+export interface UnknownToolCandidate {
+  command: string
+  sourcePath: string
+}
+
 export interface ToolsScanResult {
   tools: ToolInfo[]
   byCategory: Record<string, ToolInfo[]>
+  unknownCandidates: UnknownToolCandidate[]
   stats: {
     installed: number
     total: number
     categories: number
     percentage: number
   }
+}
+
+export interface CachedToolsResult extends ToolsScanResult {
+  cachedAt: number
 }
 
 export interface RecentProject {
@@ -57,6 +67,8 @@ declare global {
       openWithVSCode: (projectPath: string) => Promise<void>
       openProjectWithTool: (toolName: string, projectPath: string) => Promise<void>
       openTool: (toolName: string) => Promise<void>
+      confirmUnknownTools: (candidates: UnknownToolCandidate[]) => Promise<number>
+      getCachedTools: () => Promise<CachedToolsResult | null>
       getCachedProjects: () => Promise<CachedProjectsResult | null>
       checkProjectExists: (projectPath: string) => Promise<boolean>
       addRecentProject: (name: string, path: string) => Promise<void>

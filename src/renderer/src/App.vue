@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import type {
   CachedProjectsResult,
+  CachedToolsResult,
+  UnknownToolCandidate,
   ProjectInfo,
   ScanResult,
   ToolInfo,
@@ -36,6 +38,9 @@ const selectingProject = ref<ProjectInfo | null>(null)
 const selectingToolNames = ref<string[]>([])
 const selectorAutoOpen = ref(false)
 const projectToolSelections = ref<ProjectToolSelectionMap>({})
+const unknownCandidates = ref<UnknownToolCandidate[]>([])
+const selectedUnknownToolCommands = ref<string[]>([])
+const confirmingUnknownTools = ref(false)
 const { theme, initTheme, toggleTheme } = useTheme()
 
 const groupedProjects = computed(() => {
@@ -68,6 +73,7 @@ onMounted(async () => {
   initTheme()
   loadProjectToolSelections()
   await loadCachedProjects()
+  await loadCachedTools()
   await scanTools()
 })
 
@@ -79,6 +85,17 @@ async function loadCachedProjects(): Promise<void> {
     projects: cached.projects,
     byLanguage: cached.byLanguage,
     byType: cached.byType
+  }
+}
+
+async function loadCachedTools(): Promise<void> {
+  const cached = (await window.api.getCachedTools()) as CachedToolsResult | null
+  if (!cached) return
+  toolsResult.value = {
+    tools: cached.tools,
+    byCategory: cached.byCategory,
+    stats: cached.stats,
+    unknownCandidates: cached.unknownCandidates
   }
 }
 
@@ -105,11 +122,53 @@ async function scanTools(): Promise<void> {
   scanningTools.value = true
   try {
     toolsResult.value = await window.api.scanTools()
+    const candidates = toolsResult.value.unknownCandidates || []
+    unknownCandidates.value = candidates
+    selectedUnknownToolCommands.value = []
   } catch (error) {
     console.error('Tools scan failed:', error)
     showNotice('error', '扫描开发工具失败，请重试')
   } finally {
     scanningTools.value = false
+  }
+}
+
+function closeUnknownToolsModal(): void {
+  unknownCandidates.value = []
+  selectedUnknownToolCommands.value = []
+}
+
+function toggleUnknownToolSelection(command: string): void {
+  if (selectedUnknownToolCommands.value.includes(command)) {
+    selectedUnknownToolCommands.value = selectedUnknownToolCommands.value.filter(
+      (item) => item !== command
+    )
+    return
+  }
+  selectedUnknownToolCommands.value = [...selectedUnknownToolCommands.value, command]
+}
+
+async function confirmUnknownToolsFromUi(): Promise<void> {
+  if (confirmingUnknownTools.value) return
+
+  const selected = unknownCandidates.value.filter((candidate) =>
+    selectedUnknownToolCommands.value.includes(candidate.command)
+  )
+  confirmingUnknownTools.value = true
+  try {
+    if (selected.length > 0) {
+      await window.api.confirmUnknownTools(selected)
+      showNotice('info', `已添加 ${selected.length} 个开发工具`)
+    } else {
+      showNotice('info', '已跳过新增开发工具')
+    }
+    closeUnknownToolsModal()
+    await scanTools()
+  } catch (error) {
+    console.error('Confirm unknown tools failed:', error)
+    showNotice('error', '确认新增开发工具失败，请重试')
+  } finally {
+    confirmingUnknownTools.value = false
   }
 }
 
@@ -473,6 +532,52 @@ function windowClose(): void {
         <div class="modal-actions">
           <button class="btn-outline" @click="closeToolSelector">Cancel</button>
           <button class="btn-primary" @click="confirmToolSelection">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="unknownCandidates.length > 0"
+      class="modal-overlay"
+      @click.self="closeUnknownToolsModal"
+    >
+      <div class="modal-card">
+        <h3>确认新增开发工具</h3>
+        <p>检测到未识别的工具命令，请勾选需要加入的工具（支持多选）。</p>
+
+        <div class="unknown-tools-list">
+          <label
+            v-for="candidate in unknownCandidates"
+            :key="candidate.command + candidate.sourcePath"
+            class="unknown-tool-item"
+          >
+            <input
+              type="checkbox"
+              :checked="selectedUnknownToolCommands.includes(candidate.command)"
+              @change="toggleUnknownToolSelection(candidate.command)"
+            />
+            <div class="unknown-tool-text">
+              <span class="unknown-tool-command">{{ candidate.command }}</span>
+              <span class="unknown-tool-path">{{ candidate.sourcePath }}</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button
+            class="btn-outline"
+            :disabled="confirmingUnknownTools"
+            @click="closeUnknownToolsModal"
+          >
+            Skip
+          </button>
+          <button
+            class="btn-primary"
+            :disabled="confirmingUnknownTools"
+            @click="confirmUnknownToolsFromUi"
+          >
+            {{ confirmingUnknownTools ? 'Saving...' : 'Add Selected' }}
+          </button>
         </div>
       </div>
     </div>
@@ -1184,7 +1289,7 @@ function windowClose(): void {
   width: min(560px, 100%);
   max-height: 80vh;
   overflow: auto;
-  background: var(--card-bg);
+  background: var(--bg-canvas);
   border: 1px solid var(--border-normal);
   border-radius: 12px;
   padding: 18px;
@@ -1223,5 +1328,43 @@ function windowClose(): void {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.unknown-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.unknown-tool-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.unknown-tool-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.unknown-tool-command {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.unknown-tool-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
 }
 </style>

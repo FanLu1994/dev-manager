@@ -30,15 +30,25 @@ export interface ToolInfo {
   category: 'IDE' | 'CLI'
 }
 
+export interface UnknownToolCandidate {
+  command: string
+  sourcePath: string
+}
+
 export interface ToolsScanResult {
   tools: ToolInfo[]
   byCategory: Record<string, ToolInfo[]>
+  unknownCandidates: UnknownToolCandidate[]
   stats: {
     installed: number
     total: number
     categories: number
     percentage: number
   }
+}
+
+export interface CachedToolsResult extends ToolsScanResult {
+  cachedAt: number
 }
 
 export interface RecentProject {
@@ -57,6 +67,9 @@ const api = {
   openProjectWithTool: (toolName: string, projectPath: string) =>
     ipcRenderer.invoke('open-project-with-tool', toolName, projectPath),
   openTool: (toolName: string) => ipcRenderer.invoke('open-tool', toolName),
+  confirmUnknownTools: (candidates: UnknownToolCandidate[]) =>
+    ipcRenderer.invoke('confirm-unknown-tools', candidates),
+  getCachedTools: () => ipcRenderer.invoke('get-cached-tools'),
   getCachedProjects: () => ipcRenderer.invoke('get-cached-projects'),
   checkProjectExists: (projectPath: string) =>
     ipcRenderer.invoke('check-project-exists', projectPath),

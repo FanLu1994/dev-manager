@@ -8,6 +8,7 @@ import {
   categorizeTools,
   confirmUnknownTools,
   getToolsStats,
+  openDevelopmentTool,
   type UnknownToolCandidate
 } from './tools-scanner'
 import {
@@ -228,6 +229,11 @@ app.whenReady().then(() => {
   // 用 VS Code 打开项目
   ipcMain.handle('open-with-vscode', async (_, projectPath: string) => {
     await openWithVSCode(projectPath)
+  })
+
+  // 打开开发工具
+  ipcMain.handle('open-tool', async (_, toolName: string) => {
+    await openDevelopmentTool(toolName)
   })
 
   // 添加到最近项目

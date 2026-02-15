@@ -8,6 +8,14 @@ defineProps<{
   groupedTools: Record<string, ToolInfo[]>
   getCategoryAccent: (category: string) => string
 }>()
+
+const emit = defineEmits<{
+  'open-tool': [tool: ToolInfo]
+}>()
+
+function openTool(tool: ToolInfo): void {
+  emit('open-tool', tool)
+}
 </script>
 
 <template>
@@ -35,13 +43,20 @@ defineProps<{
         </div>
 
         <div class="tools-grid">
-          <div v-for="tool in groupedTools[category]" :key="tool.name" class="tool-card">
+          <button
+            v-for="tool in groupedTools[category]"
+            :key="tool.name"
+            type="button"
+            class="tool-card tool-card-button"
+            :title="`Open ${tool.displayName}`"
+            @click="openTool(tool)"
+          >
             <div class="tool-icon">{{ tool.icon }}</div>
             <div class="tool-info">
               <h4 class="tool-name">{{ tool.displayName }}</h4>
               <p v-if="tool.version" class="tool-version">{{ tool.version }}</p>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </div>

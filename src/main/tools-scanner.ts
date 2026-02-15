@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { exec } from 'child_process'
+import { exec, spawn } from 'child_process'
 import { existsSync, mkdirSync, promises as fs } from 'fs'
 import { delimiter, join } from 'path'
 import { promisify } from 'util'
@@ -733,4 +733,60 @@ export function getToolsStats(tools: ToolInfo[]) {
     categories,
     percentage: 100
   }
+}
+
+async function resolveRunnableAlias(aliases: string[]): Promise<string | undefined> {
+  const checkCommand = process.platform === 'win32' ? 'where' : 'which'
+
+  for (const alias of aliases) {
+    try {
+      await execAsync(`${checkCommand} ${alias}`, {
+        timeout: 2000
+      })
+      return alias
+    } catch {
+      // try next alias
+    }
+  }
+
+  return undefined
+}
+
+function launchToolCommand(command: string): void {
+  if (process.platform === 'win32') {
+    const child = spawn('cmd', ['/c', 'start', '', command], {
+      detached: true,
+      stdio: 'ignore'
+    })
+    child.unref()
+    return
+  }
+
+  const child = spawn(command, [], {
+    detached: true,
+    stdio: 'ignore'
+  })
+  child.unref()
+}
+
+export async function openDevelopmentTool(toolName: string): Promise<void> {
+  const normalizedName = toolName.trim().toLowerCase()
+  if (!normalizedName) {
+    throw new Error('Tool name is required')
+  }
+
+  const customTools = await loadCustomTools()
+  const tools = mergeToolDefinitions(customTools)
+  const targetTool = tools.find((tool) => {
+    if (tool.name.toLowerCase() === normalizedName) return true
+    return getAliases(tool).some((alias) => alias.toLowerCase() === normalizedName)
+  })
+
+  if (!targetTool) {
+    throw new Error(`Tool not found: ${toolName}`)
+  }
+
+  const aliases = getAliases(targetTool)
+  const runnableAlias = (await resolveRunnableAlias(aliases)) || aliases[0]
+  launchToolCommand(runnableAlias)
 }

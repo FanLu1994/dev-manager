@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { ProjectInfo, ScanResult, ToolsScanResult } from '../../preload/index'
+import type { ProjectInfo, ScanResult, ToolInfo, ToolsScanResult } from '../../preload/index'
 import { useTheme } from './composables/useTheme'
 import { getLanguageAccent, getCategoryAccent } from './constants/accent-colors'
 import ProjectPanel from './components/ProjectPanel.vue'
@@ -85,6 +85,10 @@ async function openProject(project: ProjectInfo) {
 
 async function openWithVSCode(project: ProjectInfo) {
   await openProjectWith(window.api.openWithVSCode, project)
+}
+
+async function openTool(tool: ToolInfo): Promise<void> {
+  await window.api.openTool(tool.name)
 }
 
 async function openProjectWith(
@@ -230,6 +234,7 @@ function windowClose() {
           :tool-categories="toolCategories"
           :grouped-tools="groupedTools"
           :get-category-accent="getCategoryAccent"
+          @open-tool="openTool"
         />
       </main>
     </div>
@@ -803,6 +808,19 @@ function windowClose() {
   border: 1px solid var(--border-normal);
   border-radius: 8px;
   transition: all 0.12s ease;
+}
+
+.tool-card-button {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tool-card-button:focus-visible {
+  outline: 2px solid var(--text-subtle);
+  outline-offset: 2px;
 }
 
 .tool-card:hover {

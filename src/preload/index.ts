@@ -49,6 +49,7 @@ const api = {
   scanTools: () => ipcRenderer.invoke('scan-tools'),
   openProject: (projectPath: string) => ipcRenderer.invoke('open-project', projectPath),
   openWithVSCode: (projectPath: string) => ipcRenderer.invoke('open-with-vscode', projectPath),
+  openTool: (toolName: string) => ipcRenderer.invoke('open-tool', toolName),
   addRecentProject: (name: string, path: string) => ipcRenderer.invoke('add-recent-project', { name, path }),
   getRecentProjects: () => ipcRenderer.invoke('get-recent-projects'),
   clearRecentProjects: () => ipcRenderer.invoke('clear-recent-projects'),

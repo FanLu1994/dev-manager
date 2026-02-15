@@ -50,6 +50,7 @@ declare global {
       scanTools: () => Promise<ToolsScanResult>
       openProject: (projectPath: string) => Promise<void>
       openWithVSCode: (projectPath: string) => Promise<void>
+      openTool: (toolName: string) => Promise<void>
       addRecentProject: (name: string, path: string) => Promise<void>
       getRecentProjects: () => Promise<RecentProject[]>
       clearRecentProjects: () => Promise<void>

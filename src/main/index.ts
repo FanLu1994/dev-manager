@@ -1,9 +1,15 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, type MessageBoxOptions } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { scanProjects, categorizeByLanguage, categorizeByType } from './scanner'
-import { scanDevelopmentTools, categorizeTools, getToolsStats } from './tools-scanner'
+import {
+  scanDevelopmentTools,
+  categorizeTools,
+  confirmUnknownTools,
+  getToolsStats,
+  type UnknownToolCandidate
+} from './tools-scanner'
 import {
   createTray,
   destroyTray,
@@ -15,6 +21,59 @@ import {
 } from './tray'
 
 let isAppQuitting = false
+
+async function showMessageBoxSafe(
+  window: BrowserWindow | undefined,
+  options: MessageBoxOptions
+) {
+  if (window) return dialog.showMessageBox(window, options)
+  return dialog.showMessageBox(options)
+}
+
+async function selectUnknownToolsInteractively(
+  window: BrowserWindow | undefined,
+  candidates: UnknownToolCandidate[]
+): Promise<UnknownToolCandidate[]> {
+  const selected: UnknownToolCandidate[] = []
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index]
+    const remaining = candidates.length - index - 1
+
+    const result = await showMessageBoxSafe(window, {
+      type: 'question',
+      title: `Confirm Tool (${index + 1}/${candidates.length})`,
+      message: `Add "${candidate.command}" as a development tool?`,
+      detail:
+        `Path: ${candidate.sourcePath}\n\n` +
+        'Choose Add This to save this one, Skip to ignore this one, Add Remaining to accept all rest, or Stop to end.',
+      buttons: ['Add This', 'Skip', 'Add Remaining', 'Stop'],
+      defaultId: 0,
+      cancelId: 3,
+      noLink: true
+    })
+
+    if (result.response === 0) {
+      selected.push(candidate)
+      continue
+    }
+
+    if (result.response === 1) {
+      continue
+    }
+
+    if (result.response === 2) {
+      selected.push(...candidates.slice(index))
+      break
+    }
+
+    if (remaining > 0) {
+      break
+    }
+  }
+
+  return selected
+}
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -124,7 +183,36 @@ app.whenReady().then(() => {
 
   // 扫描开发工具
   ipcMain.handle('scan-tools', async () => {
-    const tools = await scanDevelopmentTools()
+    let scanResult = await scanDevelopmentTools()
+
+    if (scanResult.unknownCandidates.length > 0) {
+      const currentWindow = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
+      const startConfirmation = await showMessageBoxSafe(currentWindow, {
+        type: 'question',
+        title: 'Confirm New Development Tools',
+        message: `Detected ${scanResult.unknownCandidates.length} unrecognized tool command(s).`,
+        detail:
+          'You can review them one-by-one and choose which to save.\n\n' +
+          'Choose "Review" to start selection, or "Ignore" to skip.',
+        buttons: ['Review', 'Ignore'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true
+      })
+
+      if (startConfirmation.response === 0) {
+        const selectedCandidates = await selectUnknownToolsInteractively(
+          currentWindow,
+          scanResult.unknownCandidates
+        )
+        if (selectedCandidates.length > 0) {
+          await confirmUnknownTools(selectedCandidates)
+        }
+        scanResult = await scanDevelopmentTools()
+      }
+    }
+
+    const tools = scanResult.tools
     return {
       tools,
       byCategory: categorizeTools(tools),

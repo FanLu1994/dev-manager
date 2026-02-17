@@ -162,7 +162,7 @@ function getBadgeStyle(type: 'language' | 'type', value: string) {
         </div>
 
         <!-- Grouped Views -->
-        <div v-for="category in projectCategories" :key="category" class="category-section">
+        <div v-if="currentView !== 'all'" v-for="category in projectCategories" :key="category" class="category-section">
           <div class="category-header">
             <div class="category-info">
               <span

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ProjectInfo, ScanResult } from '../../../preload/index'
+import { getLanguageAccent } from '../constants/accent-colors'
 
 type ProjectViewMode = 'all' | 'language' | 'type'
 
@@ -20,6 +21,22 @@ const emit = defineEmits<{
   'open-vscode': [project: ProjectInfo]
   'edit-project-tools': [project: ProjectInfo]
 }>()
+
+function getBadgeStyle(type: 'language' | 'type', value: string) {
+  if (type === 'language') {
+    const accent = getLanguageAccent(value)
+    return {
+      backgroundColor: `${accent}12`,
+      color: accent,
+      borderColor: `${accent}35`
+    }
+  }
+  return {
+    backgroundColor: 'var(--surface-soft)',
+    color: 'var(--text-secondary)',
+    borderColor: 'var(--border-normal)'
+  }
+}
 </script>
 
 <template>
@@ -101,8 +118,8 @@ const emit = defineEmits<{
               </div>
               <p class="project-path">{{ project.path }}</p>
               <div class="card-footer">
-                <span class="badge language-badge" :style="{ backgroundColor: getLanguageAccent(project.language) + '20', color: getLanguageAccent(project.language) }">{{ project.language }}</span>
-                <span class="badge type-badge">{{ project.type }}</span>
+                <span class="badge language-badge" :style="getBadgeStyle('language', project.language)">{{ project.language }}</span>
+                <span class="badge type-badge" :style="getBadgeStyle('type', project.type)">{{ project.type }}</span>
               </div>
               <div class="card-actions">
                 <button class="action-btn" title="Open" @click.stop="emit('open-project', project)">
@@ -174,8 +191,8 @@ const emit = defineEmits<{
               </div>
               <p class="project-path">{{ project.path }}</p>
               <div class="card-footer">
-                <span class="badge language-badge" :style="{ backgroundColor: getLanguageAccent(project.language) + '20', color: getLanguageAccent(project.language) }">{{ project.language }}</span>
-                <span class="badge type-badge">{{ project.type }}</span>
+                <span class="badge language-badge" :style="getBadgeStyle('language', project.language)">{{ project.language }}</span>
+                <span class="badge type-badge" :style="getBadgeStyle('type', project.type)">{{ project.type }}</span>
               </div>
               <div class="card-actions">
                 <button class="action-btn" title="Open" @click.stop="emit('open-project', project)">
@@ -495,13 +512,14 @@ const emit = defineEmits<{
 
 .badge {
   display: inline-flex;
-  padding: 2px 7px;
+  padding: 3px 8px;
   background: var(--surface-soft);
   border: 1px solid var(--border-normal);
-  border-radius: 999px;
-  font-size: 10px;
+  border-radius: 6px;
+  font-size: 9px;
   font-weight: 600;
-  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .language-badge {

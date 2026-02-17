@@ -7,6 +7,7 @@ export interface ProjectInfo {
   type: string
   description?: string
   hasGit?: boolean
+  lastModified?: number
 }
 
 export interface ScanResult {

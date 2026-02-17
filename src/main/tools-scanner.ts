@@ -3,6 +3,7 @@ import { exec, spawn } from 'child_process'
 import { existsSync, mkdirSync, promises as fs } from 'fs'
 import { delimiter, join } from 'path'
 import { promisify } from 'util'
+import { extractAndSaveIcon, getToolIconAsBase64 } from './icon-extractor'
 
 const execAsync = promisify(exec)
 
@@ -56,84 +57,84 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
     name: 'code',
     displayName: 'VS Code',
     category: 'IDE',
-    icon: '💻',
+    icon: 'code',
     commandAliases: ['code', 'code-insiders']
   },
   {
     name: 'cursor',
     displayName: 'Cursor',
     category: 'IDE',
-    icon: '💻',
+    icon: 'cursor',
     commandAliases: ['cursor']
   },
   {
     name: 'idea',
     displayName: 'IntelliJ IDEA',
     category: 'IDE',
-    icon: '💻',
+    icon: 'idea',
     commandAliases: ['idea', 'idea64']
   },
   {
     name: 'pycharm',
     displayName: 'PyCharm',
     category: 'IDE',
-    icon: '💻',
+    icon: 'pycharm',
     commandAliases: ['pycharm', 'pycharm64']
   },
   {
     name: 'webstorm',
     displayName: 'WebStorm',
     category: 'IDE',
-    icon: '💻',
+    icon: 'webstorm',
     commandAliases: ['webstorm', 'webstorm64']
   },
   {
     name: 'goland',
     displayName: 'GoLand',
     category: 'IDE',
-    icon: '💻',
+    icon: 'goland',
     commandAliases: ['goland', 'goland64']
   },
   {
     name: 'clion',
     displayName: 'CLion',
     category: 'IDE',
-    icon: '💻',
+    icon: 'clion',
     commandAliases: ['clion', 'clion64']
   },
   {
     name: 'rider',
     displayName: 'Rider',
     category: 'IDE',
-    icon: '💻',
+    icon: 'rider',
     commandAliases: ['rider', 'rider64']
   },
   {
     name: 'rubymine',
     displayName: 'RubyMine',
     category: 'IDE',
-    icon: '💻',
+    icon: 'rubymine',
     commandAliases: ['rubymine', 'rubymine64']
   },
   {
     name: 'datagrip',
     displayName: 'DataGrip',
     category: 'IDE',
-    icon: '💻',
+    icon: 'datagrip',
     commandAliases: ['datagrip', 'datagrip64']
   },
   {
     name: 'vim',
     displayName: 'Vim',
     category: 'IDE',
-    icon: '💻',
+    icon: 'vim',
     commandAliases: ['vim']
   },
   {
     name: 'nvim',
     displayName: 'Neovim',
     category: 'IDE',
-    icon: '💻',
+    icon: 'nvim',
     commandAliases: ['nvim']
   },
   {
@@ -189,7 +190,7 @@ const BUILTIN_TOOLS: ToolDefinition[] = [
     name: 'antigravity',
     displayName: 'Antigravity',
     category: 'IDE',
-    icon: '💻',
+    icon: 'antigravity',
     commandAliases: ['antigravity']
   }
 ]
@@ -466,7 +467,7 @@ export async function confirmUnknownTools(candidates: UnknownToolCandidate[]): P
       name: command,
       displayName: toTitleCase(command),
       category,
-      icon: category === 'IDE' ? '💻' : '🤖',
+      icon: category === 'IDE' ? 'default' : '🤖',
       commandAliases: [command]
     })
 
@@ -703,6 +704,110 @@ async function isToolInstalled(tool: ToolDefinition): Promise<boolean> {
   return false
 }
 
+/**
+ * 获取工具的实际可执行文件路径
+ */
+async function getToolExecutablePath(tool: ToolDefinition): Promise<string | null> {
+  const aliases = getAliases(tool)
+  const checkCommand = process.platform === 'win32' ? 'where' : 'which'
+
+  // 首先尝试通过命令找到路径
+  for (const alias of aliases) {
+    try {
+      const { stdout } = await execAsync(`${checkCommand} ${alias}`, {
+        timeout: 2000
+      })
+      const path = stdout.trim().split('\n')[0]
+      if (path && existsSync(path)) {
+        return path
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  // Windows 下检查已知路径
+  if (process.platform === 'win32') {
+    const knownPaths = getKnownWindowsIdePaths()[tool.name] || []
+    for (const filePath of knownPaths) {
+      if (existsSync(filePath)) return filePath
+    }
+
+    // 搜索可能的位置
+    const executableNames = WINDOWS_IDE_EXECUTABLE_NAMES[tool.name] || []
+    if (executableNames.length > 0) {
+      for (const root of getWindowsSearchRoots(tool.name)) {
+        const found = await findExecutablePathInDir(root, executableNames, 4)
+        if (found) return found
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * 在目录中递归查找可执行文件并返回完整路径
+ */
+async function findExecutablePathInDir(
+  dirPath: string,
+  exeNames: string[],
+  maxDepth: number
+): Promise<string | null> {
+  if (!dirPath || maxDepth < 0) return null
+
+  let entries: Array<{ name: string; isDirectory(): boolean }> = []
+  try {
+    entries = await fs.readdir(dirPath, { withFileTypes: true })
+  } catch {
+    return null
+  }
+
+  for (const entry of entries) {
+    const fullPath = join(dirPath, entry.name)
+    if (!entry.isDirectory()) {
+      if (exeNames.includes(entry.name.toLowerCase())) {
+        return fullPath
+      }
+      continue
+    }
+
+    const found = await findExecutablePathInDir(fullPath, exeNames, maxDepth - 1)
+    if (found) return found
+  }
+
+  return null
+}
+
+/**
+ * 为工具提取或获取图标
+ */
+async function extractToolIcon(tool: ToolDefinition): Promise<string | undefined> {
+  // 只在 Windows 平台提取图标
+  if (process.platform !== 'win32') {
+    return undefined
+  }
+
+  // 检查是否已有缓存的 base64 图标
+  const existingBase64 = await getToolIconAsBase64(tool.name)
+  if (existingBase64) {
+    return existingBase64
+  }
+
+  // 获取 exe 路径并提取图标
+  const exePath = await getToolExecutablePath(tool)
+  if (exePath) {
+    const iconPath = await extractAndSaveIcon(exePath, tool.name)
+    if (iconPath) {
+      // 返回 base64 数据 URI
+      const base64Icon = await getToolIconAsBase64(tool.name)
+      return base64Icon || undefined
+    }
+  }
+
+  return undefined
+}
+
 export async function scanDevelopmentTools(): Promise<ToolsScanOutput> {
   const installedTools: ToolInfo[] = []
   const customTools = await loadCustomTools()
@@ -714,7 +819,11 @@ export async function scanDevelopmentTools(): Promise<ToolsScanOutput> {
     if (installed) {
       const version =
         (await getToolVersion(tool)) || (await tryReadJetBrainsBuildVersion(tool.name))
-      installedTools.push({ ...tool, installed: true, version })
+
+      // 提取工具图标
+      const icon = await extractToolIcon(tool)
+
+      installedTools.push({ ...tool, installed: true, version, icon })
     }
   }
 

@@ -14,7 +14,7 @@ import { getLanguageAccent, getCategoryAccent } from './constants/accent-colors'
 import ProjectPanel from './components/ProjectPanel.vue'
 import ToolsModal from './components/ToolsModal.vue'
 
-type ProjectViewMode = 'language' | 'type'
+type ProjectViewMode = 'all' | 'language' | 'type'
 type NoticeType = 'info' | 'warning' | 'error'
 
 interface UiNotice {
@@ -30,7 +30,7 @@ const scanResult = ref<ScanResult | null>(null)
 const toolsResult = ref<ToolsScanResult | null>(null)
 const scanningProjects = ref(false)
 const scanningTools = ref(false)
-const currentView = ref<ProjectViewMode>('language')
+const currentView = ref<ProjectViewMode>('all')
 const toolsModalVisible = ref(false)
 const uiNotice = ref<UiNotice | null>(null)
 const selectingProject = ref<ProjectInfo | null>(null)
@@ -44,6 +44,9 @@ const { theme, initTheme, toggleTheme } = useTheme()
 
 const groupedProjects = computed(() => {
   if (!scanResult.value) return {}
+  if (currentView.value === 'all') {
+    return { all: scanResult.value.projects }
+  }
   return currentView.value === 'language' ? scanResult.value.byLanguage : scanResult.value.byType
 })
 

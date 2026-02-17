@@ -15,7 +15,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(powershell -Command \"Get-Command code -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(pnpm run typecheck:node:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm rebuild:*)",
+      "Bash(npx electron-rebuild:*)"
     ]
   }
 }

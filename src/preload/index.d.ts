@@ -8,6 +8,8 @@ export interface ProjectInfo {
   description?: string
   hasGit?: boolean
   lastModified?: number
+  lastUsedTool?: string
+  selectedTools?: string[]
 }
 
 export interface ScanResult {
@@ -57,6 +59,13 @@ export interface RecentProject {
   lastOpened: number
 }
 
+export interface ProjectToolSelection {
+  projectPath: string
+  selectedTools: string[]
+  lastUsedTool?: string
+  lastUsedAt?: number
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
@@ -75,6 +84,9 @@ declare global {
       addRecentProject: (name: string, path: string) => Promise<void>
       getRecentProjects: () => Promise<RecentProject[]>
       clearRecentProjects: () => Promise<void>
+      getProjectToolSelection: (projectPath: string) => Promise<ProjectToolSelection | null>
+      saveProjectToolSelection: (projectPath: string, selectedTools: string[]) => Promise<void>
+      getAllProjectToolSelections: () => Promise<Record<string, ProjectToolSelection>>
       windowMinimize: () => void
       windowMaximize: () => void
       windowClose: () => void

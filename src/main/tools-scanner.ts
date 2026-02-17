@@ -946,11 +946,20 @@ export async function openProjectWithDevelopmentTool(
     throw new Error(`Tool not found: ${toolName}`)
   }
 
+  // 尝试获取可执行文件的实际路径
+  const executablePath = await getToolExecutablePath(targetTool)
   const aliases = getAliases(targetTool)
-  const runnableAlias = (await resolveRunnableAlias(aliases)) || aliases[0]
+  const runnableAlias = executablePath || (await resolveRunnableAlias(aliases)) || aliases[0]
 
   if (process.platform === 'win32') {
-    await execAsync(`start "" ${runnableAlias} ${quoteForCmd(projectPath)}`)
+    // Windows 下使用 start 命令启动
+    if (executablePath) {
+      // 使用完整路径启动（需要用引号包裹）
+      await execAsync(`start "" ${quoteForCmd(executablePath)} ${quoteForCmd(projectPath)}`)
+    } else {
+      // 使用命令别名启动
+      await execAsync(`start "" ${runnableAlias} ${quoteForCmd(projectPath)}`)
+    }
     return
   }
 

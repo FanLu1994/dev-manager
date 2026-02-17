@@ -23,6 +23,13 @@ import {
   openProject,
   openWithVSCode
 } from './tray'
+import {
+  getProjectToolSelection,
+  saveProjectToolSelection,
+  recordProjectToolUsage,
+  attachProjectToolInfo,
+  getAllProjectToolSelections
+} from './project-tools'
 
 let isAppQuitting = false
 
@@ -125,6 +132,7 @@ app.whenReady().then(() => {
   // 扫描项目
   ipcMain.handle('scan-projects', async (_, folderPath: string) => {
     const projects = await scanProjects(folderPath)
+    await attachProjectToolInfo(projects)
     await saveProjectsCache(folderPath, projects)
     return {
       projects,
@@ -137,6 +145,8 @@ app.whenReady().then(() => {
   ipcMain.handle('get-cached-projects', async () => {
     const cache = await loadProjectsCache()
     if (!cache) return null
+
+    await attachProjectToolInfo(cache.projects)
 
     return {
       folderPath: cache.folderPath,
@@ -191,7 +201,16 @@ app.whenReady().then(() => {
     if (!(await checkProjectExists(projectPath))) {
       throw new Error('PROJECT_NOT_FOUND')
     }
-    await openProject(projectPath)
+    // 获取项目的工具选择
+    const selection = await getProjectToolSelection(projectPath)
+    const toolName = selection?.lastUsedTool || selection?.selectedTools?.[0]
+
+    if (toolName) {
+      await recordProjectToolUsage(projectPath, toolName)
+      await openProjectWithDevelopmentTool(toolName, projectPath)
+    } else {
+      await openProject(projectPath)
+    }
   })
 
   // 用 VS Code 打开项目
@@ -199,6 +218,7 @@ app.whenReady().then(() => {
     if (!(await checkProjectExists(projectPath))) {
       throw new Error('PROJECT_NOT_FOUND')
     }
+    await recordProjectToolUsage(projectPath, 'code')
     await openWithVSCode(projectPath)
   })
 
@@ -212,6 +232,7 @@ app.whenReady().then(() => {
     if (!(await checkProjectExists(projectPath))) {
       throw new Error('PROJECT_NOT_FOUND')
     }
+    await recordProjectToolUsage(projectPath, toolName)
     await openProjectWithDevelopmentTool(toolName, projectPath)
   })
 
@@ -228,6 +249,22 @@ app.whenReady().then(() => {
   // 清空最近项目
   ipcMain.handle('clear-recent-projects', async () => {
     clearRecentProjects()
+  })
+
+  // 获取项目的工具选择
+  ipcMain.handle('get-project-tool-selection', async (_, projectPath: string) => {
+    return await getProjectToolSelection(projectPath)
+  })
+
+  // 保存项目的工具选择
+  ipcMain.handle('save-project-tool-selection', async (_, projectPath: string, selectedTools: string[]) => {
+    await saveProjectToolSelection(projectPath, selectedTools)
+  })
+
+  // 获取所有工具选择（用于前端获取）
+  ipcMain.handle('get-all-project-tool-selections', async () => {
+    const selections = await getAllProjectToolSelections()
+    return selections
   })
 
   const mainWindow = createWindow()

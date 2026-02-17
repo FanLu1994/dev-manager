@@ -9,6 +9,8 @@ export interface ProjectInfo {
   description?: string
   hasGit?: boolean
   lastModified?: number
+  lastUsedTool?: string
+  selectedTools?: string[]
 }
 
 export interface ScanResult {
@@ -58,6 +60,13 @@ export interface RecentProject {
   lastOpened: number
 }
 
+export interface ProjectToolSelection {
+  projectPath: string
+  selectedTools: string[]
+  lastUsedTool?: string
+  lastUsedAt?: number
+}
+
 // Custom APIs for renderer
 const api = {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
@@ -78,6 +87,11 @@ const api = {
     ipcRenderer.invoke('add-recent-project', { name, path }),
   getRecentProjects: () => ipcRenderer.invoke('get-recent-projects'),
   clearRecentProjects: () => ipcRenderer.invoke('clear-recent-projects'),
+  getProjectToolSelection: (projectPath: string) =>
+    ipcRenderer.invoke('get-project-tool-selection', projectPath),
+  saveProjectToolSelection: (projectPath: string, selectedTools: string[]) =>
+    ipcRenderer.invoke('save-project-tool-selection', projectPath, selectedTools),
+  getAllProjectToolSelections: () => ipcRenderer.invoke('get-all-project-tool-selections'),
   windowMinimize: () => ipcRenderer.send('window-minimize'),
   windowMaximize: () => ipcRenderer.send('window-maximize'),
   windowClose: () => ipcRenderer.send('window-close')

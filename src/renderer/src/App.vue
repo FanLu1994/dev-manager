@@ -189,6 +189,23 @@ async function openWithVSCode(project: ProjectInfo): Promise<void> {
   await openProjectWith(window.api.openWithVSCode, project)
 }
 
+async function openProjectWithTool(toolName: string, project: ProjectInfo): Promise<void> {
+  const exists = await window.api.checkProjectExists(project.path)
+  if (!exists) {
+    showNotice('warning', `项目不存在：${project.path}`)
+    return
+  }
+
+  try {
+    await window.api.openProjectWithTool(toolName, project.path)
+    await window.api.addRecentProject(project.name, project.path)
+    showNotice('info', `已使用 ${toolName} 打开项目`)
+  } catch (error) {
+    console.error(`Failed to open project with tool: ${toolName}`, error)
+    showNotice('error', `打开失败：${toolName}`)
+  }
+}
+
 async function openTool(tool: ToolInfo): Promise<void> {
   await window.api.openTool(tool.name)
 }
@@ -463,6 +480,7 @@ function windowClose(): void {
       <main class="app-main">
         <ProjectPanel
           :scan-result="scanResult"
+          :tools-result="toolsResult"
           :scanning-projects="scanningProjects"
           :total-projects="totalProjects"
           :current-view="currentView"
@@ -473,6 +491,7 @@ function windowClose(): void {
           @update:view="currentView = $event"
           @open-project="openProject"
           @open-vscode="openWithVSCode"
+          @open-project-with-tool="openProjectWithTool"
           @edit-project-tools="editProjectTools"
         />
       </main>

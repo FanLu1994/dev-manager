@@ -1,4 +1,4 @@
-import { readdir, readFile, access, constants } from 'fs/promises'
+import { readdir, readFile, access, constants, stat } from 'fs/promises'
 import { join, basename } from 'path'
 
 export interface ProjectInfo {
@@ -8,6 +8,7 @@ export interface ProjectInfo {
   type: string
   description?: string
   hasGit?: boolean
+  lastModified?: number
 }
 
 export type LanguageCategory = {
@@ -229,7 +230,15 @@ export async function scanProjects(rootPath: string, maxDepth = 2): Promise<Proj
       const projectType = await detectProjectType(dirPath)
       if (projectType) {
         const hasGit = await hasGitRepo(dirPath)
+        let lastModified = 0
         let description = projectType.description
+
+        try {
+          const stats = await stat(dirPath)
+          lastModified = stats.mtimeMs
+        } catch {
+          // 使用默认值 0，保证排序逻辑可用
+        }
 
         // 尝试从 package.json 读取更多信息
         if (projectType.type === 'Node.js') {
@@ -248,7 +257,8 @@ export async function scanProjects(rootPath: string, maxDepth = 2): Promise<Proj
           language: projectType.language,
           type: projectType.type,
           description,
-          hasGit
+          hasGit,
+          lastModified
         })
 
         // 找到项目后，不再深入扫描子目录
@@ -270,13 +280,21 @@ export async function scanProjects(rootPath: string, maxDepth = 2): Promise<Proj
   }
 
   await scanDir(rootPath, 0)
-  return projects
+  return sortProjectsByLastModified(projects)
+}
+
+function sortProjectsByLastModified(projects: ProjectInfo[]): ProjectInfo[] {
+  return [...projects].sort((a, b) => {
+    const timeDiff = (b.lastModified ?? 0) - (a.lastModified ?? 0)
+    if (timeDiff !== 0) return timeDiff
+    return a.name.localeCompare(b.name, 'zh-CN')
+  })
 }
 
 export function categorizeByLanguage(projects: ProjectInfo[]): LanguageCategory {
   const categorized: LanguageCategory = {}
 
-  for (const project of projects) {
+  for (const project of sortProjectsByLastModified(projects)) {
     const lang = project.language
     if (!categorized[lang]) {
       categorized[lang] = []
@@ -290,7 +308,7 @@ export function categorizeByLanguage(projects: ProjectInfo[]): LanguageCategory 
 export function categorizeByType(projects: ProjectInfo[]): ProjectCategory {
   const categorized: ProjectCategory = {}
 
-  for (const project of projects) {
+  for (const project of sortProjectsByLastModified(projects)) {
     const type = project.type
     if (!categorized[type]) {
       categorized[type] = []

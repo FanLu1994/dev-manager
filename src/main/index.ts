@@ -29,8 +29,8 @@ let isAppQuitting = false
 function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1050,
+    height: 700,
     show: false,
     frame: false,
     titleBarStyle: 'hidden',

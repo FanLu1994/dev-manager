@@ -105,10 +105,8 @@ const emit = defineEmits<{
               </div>
               <p class="project-path">{{ project.path }}</p>
               <div class="card-footer">
-                <span class="badge">{{ project.type }}</span>
-                <span v-if="project.description" class="description">{{
-                  project.description
-                }}</span>
+                <span class="badge language-badge" :style="{ backgroundColor: getLanguageAccent(project.language) + '20', color: getLanguageAccent(project.language) }">{{ project.language }}</span>
+                <span class="badge type-badge">{{ project.type }}</span>
               </div>
               <div class="card-actions">
                 <button class="action-btn" title="Open" @click.stop="emit('open-project', project)">
@@ -165,3 +163,357 @@ const emit = defineEmits<{
     </div>
   </div>
 </template>
+
+<style scoped>
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 152px);
+  text-align: center;
+  animation: fade-slide-up 0.35s ease both;
+}
+
+.empty-icon {
+  width: 54px;
+  height: 54px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--text-subtle);
+}
+
+.empty-icon svg {
+  width: 27px;
+  height: 27px;
+}
+
+.empty-state h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 7px;
+}
+
+.empty-state p {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 360px;
+  margin-bottom: 18px;
+  line-height: 1.55;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 18px var(--shadow-1);
+  animation: fade-slide-up 0.3s ease both;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-normal);
+}
+
+.view-toggle {
+  display: inline-flex;
+  background: var(--surface-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 14px;
+}
+
+.toggle-btn {
+  padding: 7px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.toggle-btn.active {
+  background: var(--toggle-active-bg);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px var(--shadow-1);
+}
+
+.categories {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.category-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fade-slide-up 0.42s ease both;
+}
+
+.category-section:nth-child(2) {
+  animation-delay: 0.05s;
+}
+
+.category-section:nth-child(3) {
+  animation-delay: 0.09s;
+}
+
+.category-section:nth-child(4) {
+  animation-delay: 0.13s;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.category-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.category-header h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.category-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 9px;
+}
+
+.project-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 11px;
+  padding: 12px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.project-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.project-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-normal);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px var(--shadow-1);
+}
+
+.project-card:hover::before {
+  opacity: 1;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  gap: 7px;
+}
+
+.project-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  word-break: break-all;
+}
+
+.git-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.project-path {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--text-subtle);
+  margin-bottom: 10px;
+  word-break: break-all;
+  line-height: 1.45;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 2px 7px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border-normal);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.language-badge {
+  background: transparent;
+  border: 1px solid;
+}
+
+.type-badge {
+  background: var(--surface-soft);
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.action-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.action-btn:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+  border-color: var(--border-normal);
+  transform: translateY(-1px);
+}
+
+.action-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.action-btn.vscode {
+  color: #22d3ee;
+}
+
+.no-projects {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 14px;
+  text-align: center;
+}
+
+.no-projects svg {
+  width: 36px;
+  height: 36px;
+  color: var(--text-subtle);
+  margin-bottom: 10px;
+}
+
+.no-projects p {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.no-projects span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 860px) {
+  .projects-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+</style>
